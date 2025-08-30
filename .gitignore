@@ -1,6 +1,9 @@
 .vscode
 secrets
-mosquitto/config/certs
+
+**/mosquitto/data/*
+**/mosquitto/log/*
+
 **/*.crt
 **/*.srl
 **/*.key
