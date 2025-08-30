@@ -1,1 +1,7 @@
 .vscode
+secrets
+mosquitto/config/certs
+**/*.crt
+**/*.srl
+**/*.key
+**/*.csr
