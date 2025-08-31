@@ -9,3 +9,4 @@ secrets
 **/*.srl
 **/*.key
 **/*.csr
+.env

@@ -18,7 +18,7 @@ public:
         }
 
         // Load CA certificate
-        File file = SPIFFS.open("/certs/ca.crt", "r");
+        File file = SPIFFS.open("/ca.crt", "r");
         if (!file)
         {
             Serial.println("Failed to open ca.crt");
@@ -28,7 +28,7 @@ public:
         file.close();
 
         // Load client certificate
-        file = SPIFFS.open("/certs/client.crt", "r");
+        file = SPIFFS.open("/client.crt", "r");
         if (!file)
         {
             Serial.println("Failed to open client.crt");
@@ -38,7 +38,7 @@ public:
         file.close();
 
         // Load private key
-        file = SPIFFS.open("/certs/client.key", "r");
+        file = SPIFFS.open("/client.key", "r");
         if (!file)
         {
             Serial.println("Failed to open client.key");
