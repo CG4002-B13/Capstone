@@ -1,5 +1,6 @@
 .vscode
 secrets
+.env
 
 **/mosquitto/data/*
 **/mosquitto/log/*
