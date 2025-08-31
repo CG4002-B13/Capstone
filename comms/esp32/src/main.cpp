@@ -87,8 +87,7 @@ void setupMQTT() {
     }
 
     // Setup MQTT
-    // mqttClient.setServer(mqttServer, atoi(mqttPort));
-    mqttClient.setServer("192.168.1.3", 8883);
+    mqttClient.setServer(mqttServer, atoi(mqttPort));
     mqttClient.setCallback(callback);
 }
 
