@@ -4,7 +4,9 @@ Capstone AY25/26 S1
 
 ## Getting Started
 
-Insert installation steps here
+To setup locally, there are a few requirements needed:
+1. Static / Known IP address of the machine that is hosting the MQTT broker
+2. Generation of self-signed CA, client and server key and cert pairs.
 
 ## To export data to ESP32
 

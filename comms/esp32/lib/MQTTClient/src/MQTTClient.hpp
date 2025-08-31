@@ -1,0 +1,45 @@
+#ifndef MQTT_CLIENT_HPP
+#define MQTT_CLIENT_HPP
+
+#include <PubSubClient.h>
+#include <WiFiClientSecure.h>
+#include "CertificateManager.hpp"
+
+const char MQTT_HOST[] = MQTT_SERVER;
+const char MQTT_PORT_NUMBER[] = MQTT_PORT;
+const char MQTT_STATUS_TOPIC[] = "esp32/status";
+const char MQTT_COMMAND_TOPIC[] = "esp32/command";
+
+const unsigned long MQTT_RECONNECT_DELAY = 5000;
+const unsigned long MESSAGE_PUBLISH_INTERVAL = 3000;
+
+class MQTTClient {
+private:
+    WiFiClientSecure& wifiClient;
+    CertificateManager& certificateManager;
+    PubSubClient mqttClient;
+    unsigned long lastReconnectAttempt;
+    unsigned long lastMessageTime;
+    
+    String generateClientId();
+    bool loadCertificates();
+
+public:
+    MQTTClient(WiFiClientSecure& client, CertificateManager& certManager);
+    
+    bool initialize();
+    bool connect();
+    bool isConnected();
+    void handleReconnection();
+    void loop();
+    void publishStatus(const String& status);
+    bool publish(const String& topic, const String& message, bool retain = false);
+    bool subscribe(const String& topic);
+    
+    static void messageCallback(char* topic, byte* payload, unsigned int length);
+    static void handleCommand(const String& command);
+    
+    static MQTTClient* instance;
+};
+
+#endif

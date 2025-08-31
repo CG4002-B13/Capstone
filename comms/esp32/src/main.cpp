@@ -1,16 +1,18 @@
-#include "CertManager.hpp"
+#include "CertificateManager.hpp"
+#include "MQTTClient.hpp"
 #include <PubSubClient.h>
 #include <SPIFFS.h>
 #include <WiFiClientSecure.h>
 
-char ssid[] = WIFI_SSID;
-char pass[] = WIFI_PASS;
-char mqttServer[] = MQTT_SERVER;
-char mqttPort[] = MQTT_PORT;
+const char ssid[] = WIFI_SSID;
+const char pass[] = WIFI_PASS;
+const char mqttServer[] = MQTT_SERVER;
+const char mqttPort[] = MQTT_PORT;
 
 WiFiClientSecure wifiClient;
-PubSubClient mqttClient(wifiClient);
 CertificateManager certificateManager;
+MQTTClient mqttClient(wifiClient, certificateManager);
+
 
 const char topic[] = "testing";
 
@@ -22,35 +24,35 @@ const char *ntpServer = "pool.ntp.org";
 const long gmtOffset_sec = 0;
 const int daylightOffset_sec = 0;
 
-void callback(char *topic, byte *payload, unsigned int length) {
-    Serial.printf("Message arrived [%s]: ", topic);
-    for (int i = 0; i < length; i++) {
-        Serial.print((char)payload[i]);
-    }
-    Serial.println();
-}
+// void callback(char *topic, byte *payload, unsigned int length) {
+//     Serial.printf("Message arrived [%s]: ", topic);
+//     for (int i = 0; i < length; i++) {
+//         Serial.print((char)payload[i]);
+//     }
+//     Serial.println();
+// }
 
-void reconnect() {
-    while (!mqttClient.connected()) {
-        Serial.print("Attempting MQTT connection...");
+// void reconnect() {
+//     while (!mqttClient.connected()) {
+//         Serial.print("Attempting MQTT connection...");
 
-        String clientId = "ESP32Client-";
-        clientId += String(random(0xffff), HEX);
+//         String clientId = "ESP32Client-";
+//         clientId += String(random(0xffff), HEX);
 
-        if (mqttClient.connect(clientId.c_str())) {
-            Serial.println("connected");
-            mqttClient.publish("esp32/status", "online");
-            mqttClient.subscribe("esp32/command");
-        } else {
-            Serial.print("failed, rc=");
-            Serial.print(mqttClient.state());
-            Serial.println(" try again in 5 seconds");
-            delay(5000);
-        }
-    }
-}
+//         if (mqttClient.connect(clientId.c_str())) {
+//             Serial.println("connected");
+//             mqttClient.publish("esp32/status", "online");
+//             mqttClient.subscribe("esp32/command");
+//         } else {
+//             Serial.print("failed, rc=");
+//             Serial.print(mqttClient.state());
+//             Serial.println(" try again in 5 seconds");
+//             delay(5000);
+//         }
+//     }
+// }
 
-void setupMQTT() {
+void setupMISC() {
     Serial.begin(115200);
 
     Serial.print("Attempting to connect to WPA SSID: ");
@@ -80,33 +82,32 @@ void setupMQTT() {
     Serial.print("Current Time");
     Serial.println(ctime(&now));
 
-    if (certificateManager.loadCertificates()) {
-        certificateManager.applyCertificates(wifiClient);
-    } else {
-        Serial.println("Unable to load certificates.");
-    }
+    // if (certificateManager.loadCertificates()) {
+    //     certificateManager.applyCertificates(wifiClient);
+    // } else {
+    //     Serial.println("Unable to load certificates.");
+    // }
 
     // Setup MQTT
-    mqttClient.setServer(mqttServer, atoi(mqttPort));
-    mqttClient.setCallback(callback);
+    // mqttClient.setServer(mqttServer, atoi(mqttPort));
+    // mqttClient.setCallback(callback);
+    
 }
 
 void setup() {
     // put your setup code here, to run once:
-    setupMQTT();
+    setupMISC();
+    mqttClient.initialize();
+    mqttClient.connect();
 }
 
 void loop() {
-    if (!mqttClient.connected()) {
-        Serial.println("Failed to connect to MQTT, trying again...");
-        reconnect();
-    }
     mqttClient.loop();
 
     // Send test message every 30 seconds
     static unsigned long lastMsg = 0;
     unsigned long now = millis();
-    if (now - lastMsg > 3000) {
+    if ((now - lastMsg > 3000) && mqttClient.isConnected()) {
         lastMsg = now;
         String msg = "Hello from ESP32: " + String(now);
         mqttClient.publish(topic, msg.c_str());
