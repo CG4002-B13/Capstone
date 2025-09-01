@@ -13,7 +13,6 @@ WiFiClientSecure wifiClient;
 CertificateManager certificateManager;
 MQTTClient mqttClient(wifiClient, certificateManager);
 
-
 const char topic[] = "testing";
 
 const long interval = 8000;
@@ -23,34 +22,6 @@ unsigned long previousMillis = 0;
 const char *ntpServer = "pool.ntp.org";
 const long gmtOffset_sec = 0;
 const int daylightOffset_sec = 0;
-
-// void callback(char *topic, byte *payload, unsigned int length) {
-//     Serial.printf("Message arrived [%s]: ", topic);
-//     for (int i = 0; i < length; i++) {
-//         Serial.print((char)payload[i]);
-//     }
-//     Serial.println();
-// }
-
-// void reconnect() {
-//     while (!mqttClient.connected()) {
-//         Serial.print("Attempting MQTT connection...");
-
-//         String clientId = "ESP32Client-";
-//         clientId += String(random(0xffff), HEX);
-
-//         if (mqttClient.connect(clientId.c_str())) {
-//             Serial.println("connected");
-//             mqttClient.publish("esp32/status", "online");
-//             mqttClient.subscribe("esp32/command");
-//         } else {
-//             Serial.print("failed, rc=");
-//             Serial.print(mqttClient.state());
-//             Serial.println(" try again in 5 seconds");
-//             delay(5000);
-//         }
-//     }
-// }
 
 void setupMISC() {
     Serial.begin(115200);
@@ -81,17 +52,6 @@ void setupMISC() {
     time_t now = time(nullptr);
     Serial.print("Current Time");
     Serial.println(ctime(&now));
-
-    // if (certificateManager.loadCertificates()) {
-    //     certificateManager.applyCertificates(wifiClient);
-    // } else {
-    //     Serial.println("Unable to load certificates.");
-    // }
-
-    // Setup MQTT
-    // mqttClient.setServer(mqttServer, atoi(mqttPort));
-    // mqttClient.setCallback(callback);
-    
 }
 
 void setup() {

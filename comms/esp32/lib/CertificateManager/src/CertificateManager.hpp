@@ -18,7 +18,7 @@ public:
     ~CertificateManager();
     
     bool loadCertificates();
-    void applyCertificates(WiFiClientSecure& client);    
+    void applyCertificates(WiFiClientSecure* client);    
     bool isCertificatesLoaded() const;
     void clearCertificates();
     void printCertificateInfo();

@@ -40,7 +40,7 @@ bool CertificateManager::loadCertificates() {
     return success;
 }
 
-void CertificateManager::applyCertificates(WiFiClientSecure& client) {
+void CertificateManager::applyCertificates(WiFiClientSecure* client) {
     if (!client) {
         Serial.println("ERROR: WiFiClientSecure pointer is null");
         return;
@@ -54,9 +54,9 @@ void CertificateManager::applyCertificates(WiFiClientSecure& client) {
 
     Serial.println("Applying SSL certificates to WiFiClientSecure...");
 
-    client.setCACert(ca_cert.c_str());
-    client.setCertificate(client_cert.c_str());
-    client.setPrivateKey(client_key.c_str());
+    client->setCACert(ca_cert.c_str());
+    client->setCertificate(client_cert.c_str());
+    client->setPrivateKey(client_key.c_str());
 
     Serial.println("SSL certificates applied successfully");
 }

@@ -21,7 +21,7 @@ bool MQTTClient::loadCertificates() {
         return false;
     }
     
-    certificateManager.applyCertificates(wifiClient);
+    certificateManager.applyCertificates(&wifiClient);
     Serial.println("SSL certificates applied successfully.");
     return true;
 }
@@ -31,10 +31,11 @@ bool MQTTClient::initialize() {
         Serial.println("WARNING: SSL certificate loading failed. Connection may be insecure.");
     }
     
-    mqttClient.setServer(MQTT_HOST, atoi(MQTT_PORT_NUMBER));
+    // mqttClient.setServer(MQTT_HOST, atoi(MQTT_PORT_NUMBER));
+    mqttClient.setServer("192.168.1.3", 8883);
     mqttClient.setCallback(messageCallback);
     
-    randomSeed(analogRead(0));
+    // randomSeed(analogRead(0));
     
     Serial.println("MQTT client initialized.");
     return true;
