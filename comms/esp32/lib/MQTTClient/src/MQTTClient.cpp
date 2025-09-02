@@ -1,4 +1,5 @@
 #include "MQTTClient.hpp"
+#include "esp_system.h"
 #include <Arduino.h>
 
 MQTTClient* MQTTClient::instance = nullptr;
@@ -22,7 +23,6 @@ bool MQTTClient::loadCertificates() {
     }
     
     certificateManager.applyCertificates(&wifiClient);
-    Serial.println("SSL certificates applied successfully.");
     return true;
 }
 
@@ -31,11 +31,10 @@ bool MQTTClient::initialize() {
         Serial.println("WARNING: SSL certificate loading failed. Connection may be insecure.");
     }
     
-    // mqttClient.setServer(MQTT_HOST, atoi(MQTT_PORT_NUMBER));
-    mqttClient.setServer("192.168.1.3", 8883);
+    mqttClient.setServer(MQTT_HOST, atoi(MQTT_PORT_NUMBER));
     mqttClient.setCallback(messageCallback);
     
-    // randomSeed(analogRead(0));
+    randomSeed(esp_random());
     
     Serial.println("MQTT client initialized.");
     return true;
@@ -138,7 +137,6 @@ void MQTTClient::messageCallback(char* topic, byte* payload, unsigned int length
     
     Serial.println(message);
     
-    // Handle commands
     if (String(topic) == MQTT_COMMAND_TOPIC) {
         handleCommand(message);
     }
