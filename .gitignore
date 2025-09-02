@@ -1,5 +1,6 @@
 .vscode
-secrets/*
+secrets/*.crt
+secrets/*.key
 .env
 
 **/mosquitto/data/*

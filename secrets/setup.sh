@@ -3,14 +3,12 @@
 # Default values
 DEFAULT_IP="127.0.0.1"
 DEFAULT_CN="localClient"
-DEFAULT_DIR="./config/certs"
+DEFAULT_DIR="./"
 
-# Initialize variables with defaults
 IP_ADDRESS="$DEFAULT_IP"
 CLIENT_CN="$DEFAULT_CN"
 CERT_DIR="$DEFAULT_DIR"
 
-# Function to display usage
 usage() {
     echo "Usage: $0 [-ip <ip_address>] [-cn <common_name>] [-dir <directory>]"
     echo "  -ip <ip_address>   : IP address for the server certificate (default: $DEFAULT_IP)"
@@ -26,7 +24,6 @@ usage() {
     echo "  $0 -ip 10.0.0.5 -cn sensor1 -dir ./certs  # All custom values"
 }
 
-# Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
         -ip)
@@ -53,7 +50,6 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Display configuration
 echo "=== SSL Certificate Generation ==="
 echo "Server IP Address: $IP_ADDRESS"
 echo "Client Common Name: $CLIENT_CN"
@@ -61,7 +57,6 @@ echo "Certificate Directory: $CERT_DIR"
 echo "=================================="
 echo ""
 
-# Create directory structure
 mkdir -p "$CERT_DIR"
 cd "$CERT_DIR"
 
@@ -87,8 +82,7 @@ openssl req -new -key client.key -out client.csr \
 openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key -CAcreateserial \
 -out client.crt -days 365 -sha256
 
-# Clean up CSR files
-rm server.csr client.csr
+rm server.csr client.csr ca.csr
 
 echo ""
 echo "=== Certificate Generation Complete ==="
