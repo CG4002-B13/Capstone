@@ -2,9 +2,9 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-INPUT_SIZE = 128
-HIDDEN_SIZE = 64
-OUTPUT_SIZE = 10
+INPUT_SIZE = 5
+HIDDEN_SIZE = 3
+OUTPUT_SIZE = 3
 
 class MLP(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
@@ -37,8 +37,8 @@ def write_layer(f, weight, bias, layer_name):
 
 if __name__ == "__main__":
     # Sample dataset
-    X = torch.randn(1000, 128)  # 1000 samples, 128 features
-    y = torch.randint(0, 10, (1000,))  # 10 classes
+    X = torch.randn(1000, INPUT_SIZE)  # 1000 samples, 128 features
+    y = torch.randint(0, OUTPUT_SIZE, (1000,))  # 10 classes
 
     # DataLoader
     dataset = torch.utils.data.TensorDataset(X, y)
@@ -65,7 +65,7 @@ if __name__ == "__main__":
     # Save model for testing
     torch.save(model.state_dict(), "mlp.pth")
 
-    with open("../Hardware AI/mlp_weights.h", "w") as f:
+    with open("../Hardware/mlp_weights.h", "w") as f:
         f.write("#ifndef MLP_WEIGHTS_H\n#define MLP_WEIGHTS_H\n\n")
 
         f.write(f"#define INPUT_SIZE {INPUT_SIZE}\n")

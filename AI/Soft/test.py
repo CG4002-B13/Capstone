@@ -8,8 +8,8 @@ model = MLP(input_size=INPUT_SIZE, hidden_size=HIDDEN_SIZE, output_size=OUTPUT_S
 model.load_state_dict(torch.load("mlp.pth", weights_only=True))
 model.eval()
 
-# Prepare input (128 values, but only first 3 are non-zero)
-input_tensor = torch.zeros(128)
+# Prepare input (5 values, but only first 3 are non-zero)
+input_tensor = torch.zeros(INPUT_SIZE)
 input_tensor[0] = 1.0
 input_tensor[1] = -0.5
 input_tensor[2] = 0.3
