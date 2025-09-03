@@ -2,6 +2,7 @@
 secrets/*.crt
 secrets/*.key
 .env
+**/.venv
 
 **/mosquitto/data/*
 **/mosquitto/log/*
@@ -10,4 +11,4 @@ secrets/*.key
 **/*.srl
 **/*.key
 **/*.csr
-.env
+
