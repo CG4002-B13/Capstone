@@ -14,17 +14,17 @@ bool CertificateManager::loadCertificates() {
 
     bool success = true;
 
-    if (!loadFile("/ca.crt", ca_cert)) {
+    if (!loadFile("/esp32-ca.crt", ca_cert)) {
         Serial.println("ERROR: Failed to load CA certificate");
         success = false;
     }
 
-    if (!loadFile("/client.crt", client_cert)) {
+    if (!loadFile("/esp32-client.crt", client_cert)) {
         Serial.println("ERROR: Failed to load client certificate");
         success = false;
     }
 
-    if (!loadFile("/client.key", client_key)) {
+    if (!loadFile("/esp32-client.key", client_key)) {
         Serial.println("ERROR: Failed to load private key");
         success = false;
     }
