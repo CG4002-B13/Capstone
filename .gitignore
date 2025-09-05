@@ -11,4 +11,5 @@ secrets/*.key
 **/*.srl
 **/*.key
 **/*.csr
+**/*.pem
 
