@@ -11,20 +11,6 @@ CERT_DIR="$DEFAULT_DIR"
 DEVICE_PREFIX="$DEFAULT_DEVICE"
 CLIENT_CN=""
 
-if [[ -d "$CERT_DIR" && $(ls -A "$CERT_DIR") ]]; then
-    read -p "The directory '$CERT_DIR' already contains files. Do you want to clear existing certificates? [y/N]: " CONFIRM
-    case "$CONFIRM" in
-        [yY][eE][sS]|[yY])
-            echo "Clearing existing certificates in $CERT_DIR"
-            rm -rf "$CERT_DIR"/*.key "$CERT_DIR"/*.crt
-            ;;
-        *)
-            echo "Exiting. Existing certificates were not cleared."
-            exit 0
-            ;;
-    esac
-fi
-
 usage() {
     echo "Usage: $0 [-ip <ip_address>] [-cn <common_name>] [-dir <directory>] [-device <device_name>]"
     echo "  -ip <ip_address>   : IP address for the server certificate (default: $DEFAULT_IP)"
