@@ -10,7 +10,7 @@ def main():
 
     try:
         while True:
-            time.sleep(1)  # keep program alive
+            time.sleep(1)
     except KeyboardInterrupt:
         mqtt_client.disconnect()
 
