@@ -1,8 +1,9 @@
 .vscode
+.env
 secrets/*.crt
 secrets/*.key
-.env
 **/.venv
+**/__pycache__
 
 **/mosquitto/data/*
 **/mosquitto/log/*

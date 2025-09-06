@@ -10,13 +10,15 @@ IP_ADDRESS="$DEFAULT_IP"
 CERT_DIR="$DEFAULT_DIR"
 DEVICE_PREFIX="$DEFAULT_DEVICE"
 CLIENT_CN=""
+SAN_ENABLED=false
 
 usage() {
-    echo "Usage: $0 [-ip <ip_address>] [-cn <common_name>] [-dir <directory>] [-device <device_name>]"
+    echo "Usage: $0 [-ip <ip_address>] [-cn <common_name>] [-dir <directory>] [-device <device_name>] [-san]"
     echo "  -ip <ip_address>   : IP address for the server certificate (default: $DEFAULT_IP)"
     echo "  -cn <common_name>  : Common name for the client certificate (default: $DEFAULT_CN)"
     echo "  -dir <directory>   : Directory to store certificates (default: $DEFAULT_DIR)"
     echo "  -device <name>     : Device Prefix to store certificates (default: $DEFAULT_DEVICE)"
+    echo "  -san               : Add Subject Alternative Name with the given IP"
     echo "  -h, --help         : Display this help message"
     echo ""
     echo "Examples:"
@@ -25,7 +27,7 @@ usage() {
     echo "  $0 -cn myClient                      # Default IP, custom client CN, default dir"
     echo "  $0 -dir /etc/ssl/mqtt                # Default IP and CN, custom directory"
     echo "  $0 -device esp32"
-    echo "  $0 -device ultra96 -ip 10.0.0.5 -cn myUltra96 -dir ./certs"
+    echo "  $0 -device ultra96 -ip 10.0.0.5 -cn myUltra96 -dir ./certs -san"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -45,6 +47,10 @@ while [[ $# -gt 0 ]]; do
         -device)
             DEVICE_PREFIX="$2"
             shift 2
+            ;;
+        -san)
+            SAN_ENABLED=true
+            shift 1
             ;;
         -h|--help)
             usage
@@ -89,8 +95,25 @@ echo "2. Generating server certificate for IP: $IP_ADDRESS..."
 openssl genrsa -out "$SERVER_KEY" 2048
 openssl req -new -key "$SERVER_KEY" -out server.csr \
 -subj "/C=SG/ST=Singapore/L=Singapore/O=NUS/OU=MQTT/CN=$IP_ADDRESS"
-openssl x509 -req -in server.csr -CA "$CA_CRT" -CAkey "$CA_KEY" -CAcreateserial \
--out "$SERVER_CRT" -days 365 -sha256
+
+if [ "$SAN_ENABLED" = true ]; then
+    echo "Adding SAN with IP: $IP_ADDRESS"
+    cat > san.cnf <<EOF
+[ v3_req ]
+subjectAltName = @alt_names
+
+[ alt_names ]
+IP.1 = $IP_ADDRESS
+DNS.1 = localhost
+EOF
+
+    openssl x509 -req -in server.csr -CA "$CA_CRT" -CAkey "$CA_KEY" -CAcreateserial \
+    -out "$SERVER_CRT" -days 365 -sha256 -extfile san.cnf -extensions v3_req
+    rm san.cnf
+else
+    openssl x509 -req -in server.csr -CA "$CA_CRT" -CAkey "$CA_KEY" -CAcreateserial \
+    -out "$SERVER_CRT" -days 365 -sha256
+fi
 
 
 echo "3. Generating client certificate with CN: $CLIENT_CN..."
@@ -105,7 +128,10 @@ rm *.csr *.srl
 echo ""
 echo "=== Certificate Generation Complete ==="
 echo "Generated files in $CERT_DIR/:"
-echo "  - ca.crt, ca.key (Certificate Authority)"
-echo "  - server.crt, server.key (Server certificate for $IP_ADDRESS)"
-echo "  - client.crt, client.key (Client certificate for $CLIENT_CN)"
+echo "  - ${DEVICE_PREFIX}-ca.crt, ${DEVICE_PREFIX}-ca.key (Certificate Authority)"
+echo "  - ${DEVICE_PREFIX}-server.crt, ${DEVICE_PREFIX}-server.key (Server certificate for $IP_ADDRESS)"
+if [ "$SAN_ENABLED" = true ]; then
+    echo "    (with SAN: IP:$IP_ADDRESS, DNS:localhost)"
+fi
+echo "  - ${DEVICE_PREFIX}-client.crt, ${DEVICE_PREFIX}-client.key (Client certificate for $CLIENT_CN)"
 echo "========================================"

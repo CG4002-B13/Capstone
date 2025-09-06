@@ -9,7 +9,7 @@ WiFiClientSecure wifiClient;
 CertificateManager certificateManager;
 MQTTClient mqttClient(wifiClient, certificateManager);
 
-const char topic[] = "testing";
+const char topic[] = "esp32/testing";
 
 void setup() {
     // put your setup code here, to run once:
