@@ -46,7 +46,7 @@ bool MQTTClient::connect() {
     Serial.print("Connecting to MQTT broker...");
     String clientId = generateClientId();
     
-    if (mqttClient.connect(clientId.c_str())) {
+    if (mqttClient.connect(clientId.c_str(), MQTT_USER, MQTT_PASS)) {
         Serial.println(" connected!");
         
         publishStatus("online");

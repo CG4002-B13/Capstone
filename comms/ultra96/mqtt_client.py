@@ -6,10 +6,12 @@ import paho.mqtt.client as mqtt
 
 
 class SecureMQTTClient:
-    def __init__(self, host="127.0.0.1", port=8883, clientId=None):
+    def __init__(self, username, password, host="127.0.0.1", port=8883, clientId=None):
         self.host = host
         self.port = port
         self.client = mqtt.Client(client_id=clientId)
+        self.client.username_pw_set(username, password)
+
         self._ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         self._intentional_disconnect = False
 
