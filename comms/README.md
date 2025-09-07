@@ -30,15 +30,16 @@ To generate for ESP32, execute the following command using the `setup.sh` script
 The `<device>-ca.crt`, `<device>-server.crt`, `<device>-server.key` should be moved into the `/mosquitto/config` folder once generated.
 
 ## Ultra96
-To run the python test MQTT client, first create a local .venv:
+To run the python test MQTT client, first create a venv using pyenv:
 ```
-python -m venv .venv
-source .venv/bin/activate
+pyenv virtualenv 3.10.4 capstone
+pyenv activate capstone
 ```
 Then run:
 ```
 pip install -r requirements.txt
 ```
+- For VSCode IDE to detect the interpreter, activate the venv, then run `code .` in root directory.
 
 ## ESP32
 To allow dynamic importing of certificate files into the ESP32, PlatformIO was used to allow ease of storing files on the ESP32 via SPIFFS. PlatformIO also allows the usage of environment variables.
