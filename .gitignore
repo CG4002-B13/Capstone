@@ -1,3 +1,4 @@
+__pycache__/
 .vscode
 .env
 secrets/*.crt
@@ -15,3 +16,4 @@ secrets/*.key
 **/*.csr
 **/*.pem
 
+mlp.pth
