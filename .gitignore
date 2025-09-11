@@ -1,1 +1,17 @@
 .vscode
+.env
+secrets/*.crt
+secrets/*.key
+**/.venv
+**/__pycache__
+**/passwordfile
+
+**/mosquitto/data/*
+**/mosquitto/log/*
+
+**/*.crt
+**/*.srl
+**/*.key
+**/*.csr
+**/*.pem
+
