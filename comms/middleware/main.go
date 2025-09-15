@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ParthGandhiNUS/CG4002/config"
 	"github.com/gorilla/websocket"
 )
 
@@ -326,6 +327,51 @@ func (h *Hub) Run() {
 }
 
 func main() {
-	NewHub().Run()
+	envConfig := config.LoadConfig()
+
+	tlsConfig := TLSConfig{
+		CACertFile:     envConfig.CACertLocation,
+		ServerCertFile: envConfig.ServerCertLocation,
+		ServerKeyFile:  envConfig.ServerKeyLocation,
+	}
+
+	tlsConf, err := setupTLSConfig(tlsConfig)
+	if err != nil {
+		log.Fatal("Failed to setup TLS:", err)
+	}
+
+	hub := NewHub()
+	go hub.Run()
+
+	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		handleWebsocket(hub, w, r)
+	})
+	// http.HandleFunc("/health", handleHealth)
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+		if r.Method == "OPTIONS" {
+			return
+		}
+
+		w.WriteHeader(http.StatusNotFound)
+	})
+
+	server := &http.Server{
+		Addr:      ":" + envConfig.WebSocketPort,
+		TLSConfig: tlsConf,
+	}
+
+	log.Printf("Starting secure WebSocket server on port :8443")
+	log.Printf("Secure WebSocket endpoint: wss://localhost:8443/ws?userId=<USER_ID>&sessionId=<SESSION_ID>")
+	log.Printf("CA Certificate: %s", tlsConfig.CACertFile)
+	log.Printf("Server Certificate: %s", tlsConfig.ServerCertFile)
+
+	if err := server.ListenAndServeTLS(tlsConfig.ServerCertFile, tlsConfig.ServerKeyFile); err != nil {
+		log.Fatal("Server failed to start:", err)
+	}
 
 }
