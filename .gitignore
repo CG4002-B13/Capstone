@@ -17,3 +17,5 @@ secrets/*.key
 **/*.pem
 
 mlp.pth
+data/
+model.pth
