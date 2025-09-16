@@ -18,4 +18,6 @@ secrets/*.key
 
 data/
 logits.csv
+mlp.pth
+data/
 model.pth
