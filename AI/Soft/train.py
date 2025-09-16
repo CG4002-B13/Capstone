@@ -1,7 +1,5 @@
 import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader, Subset
-from torchvision.models import resnet18
+from torch.utils.data import DataLoader
 from CNN import CNN
 from dataset import AudioDataset
 
@@ -11,19 +9,10 @@ print(device)
 train_data = AudioDataset(subset="training")
 test_data = AudioDataset(subset="testing")
 
-# num_samples = 20000
-# indices = list(range(len(train_data)))[:num_samples]
-# subset_train_data = Subset(train_data, indices)
-# print(len(subset_train_data), len(test_data))
+train_loader = DataLoader(train_data, batch_size=64, shuffle=True, pin_memory=True)
+test_loader = DataLoader(test_data, batch_size=64, shuffle=False, pin_memory=True)
 
-train_loader = DataLoader(train_data, batch_size=64, shuffle=True)
-test_loader = DataLoader(test_data, batch_size=64, shuffle=False)
-
-# model = resnet18()
-# model.fc = nn.Linear(512, len(train_data.labels))
-# model.conv1 = nn.Conv2d(1, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
 model = CNN(len(train_data.labels))
-
 model.to(device)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
