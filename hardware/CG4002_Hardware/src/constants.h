@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 //CONSTANTS FOR ESP32
 
 //I2C addresses
@@ -6,14 +5,11 @@
 #define MAX_ADDR 0x36
 
 //MAX17043 constants
-=======
->>>>>>> ef86164 (chore: Create helper files)
 #ifdef __AVR__
   #define ALR_PIN 2
 #else
   #define ALR_PIN D2
 #endif
-<<<<<<< HEAD
 #define LOW_BATTERY 10
 
 #define DAC_PIN 25 //D2
@@ -35,14 +31,6 @@
 //buzzer constants
 #define DEBOUNCE 2000 //constant debouncing of 2 seconds
 #define NOTE_DURATION 100
-=======
-
-#define MPU_ADDR 0x70
-#define MAX_ADDR 0x36 //hardcoding the I2C addresses for sensors
-#define LOW_BATTERY 10
-#define DEBOUNCE 2000 //constant debouncing of 2 seconds
-
->>>>>>> ef86164 (chore: Create helper files)
 //Music notes
 #define NOTE_B0  31
 #define NOTE_C1  33
