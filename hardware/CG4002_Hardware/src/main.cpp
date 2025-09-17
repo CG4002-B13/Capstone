@@ -2,7 +2,12 @@
 #include "DFRobot_MAX17043.h"
 #include "MPU6050.h"
 #include "Wire.h"
-
+#include "CertificateManager.hpp"
+#include "MQTTClient.hpp"
+#include "Setup.hpp"
+#include <PubSubClient.h>
+#include <SPIFFS.h>
+#include <WiFiClientSecure.h>
 
 //setup alert pin for Battery monitor
 #ifdef __AVR__
@@ -16,9 +21,16 @@
 #define LOW_BATTERY 10
 #define DEBOUNCE 2000 //constant debouncing of 2 seconds
 
+#define DAC_PIN 25 //for LM3914 SIG pin
+
+WiFiClientSecure wifiClient;
+CertificateManager certificateManager;
+MQTTClient mqttClient(wifiClient, certificateManager);
 DFRobot_MAX17043 battMonitor;
 MPU6050 mpu;
+
 int intFlag = 0; //interrupt flag
+const char topic[] = "esp32/testing";
 
 void interruptCallBack() {
   intFlag = 1;
@@ -63,11 +75,20 @@ void calibrateGyroBias() {
   gyro_bias_z = (sz/(float)BIAS_CAL_SAMPLES)/GYRO_SCALE;
 }
 
+uint8_t battRounding(float percentage) {
+  //convert eg 71.42 -> 70% 
+  int result = round(percentage / 10);
+  return result * 255 / 10; //scaled to analog output
+}
 
 
 void setup()
 {
   Serial.begin(115200);
+  setupWifi();
+  setupTime();
+  mqttClient.initialize();
+  mqttClient.connect();
   delay(400);
   while(!Serial);
 
@@ -88,10 +109,15 @@ void setup()
   delay(2);
   Serial.println("Battery monitor successfully connected!");
   battMonitor.setInterrupt(LOW_BATTERY); //sends an interrupt to warn when the battery hits the threshold
+
+  //pinMode(D8, INPUT); //for the two switches
+  //pinMode(D9, INPUT);
+
 }
 
 void loop()
 {
+  mqttClient.loop();
  // Read raw IMU
   int16_t ax, ay, az, gx, gy, gz;
   mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
@@ -155,24 +181,20 @@ void loop()
   }
 
   // Output (rate-limit to keep serial readable)
-  static unsigned long last_print = 0;
-  if (now - last_print > 2000) {
-    Serial.printf("Pitch=%6.2f  Roll=%6.2f  Yaw=%6.2f\n", pitch_deg, roll_deg, yaw_deg);
-    last_print = now;
-  }
-
   static unsigned long lastMillis = 0;
-  if((millis() - lastMillis) > DEBOUNCE) {
-    lastMillis = millis();
-    Serial.println();
+  if((now - lastMillis) > DEBOUNCE) {
+    lastMillis = now;
+    String message = "voltage: ";
+    message += battMonitor.readVoltage();
+    message += "mV\n";
+    message += "percentage: ";
+    message += battMonitor.readPercentage();
+    message += "%\n";
+    message += "Pitch=%6.2f  Roll=%6.2f  Yaw=%6.2f\n", pitch_deg, roll_deg, yaw_deg;
 
-    Serial.print("voltage: ");
-    Serial.print(battMonitor.readVoltage());
-    Serial.println(" mV");
-
-    Serial.print("precentage: ");
-    Serial.print(battMonitor.readPercentage());
-    Serial.println(" %");
+    mqttClient.publish(topic, message.c_str());
+    Serial.print("Sent message: " + message);
+    dacWrite(DAC_PIN, battRounding(battMonitor.readPercentage()));
   }
 
   if(intFlag == 1) {
