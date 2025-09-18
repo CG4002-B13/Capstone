@@ -2,32 +2,15 @@
 #include "DFRobot_MAX17043.h"
 #include "MPU6050.h"
 #include "Wire.h"
-#include "CertificateManager.hpp"
-#include "MQTTClient.hpp"
-#include "Setup.hpp"
-#include <PubSubClient.h>
-#include <SPIFFS.h>
-#include <WiFiClientSecure.h>
+#include "constants.h"
+#include "helpers.h"
+
 
 //setup alert pin for Battery monitor
-#ifdef __AVR__
-  #define ALR_PIN 2
-#else
-  #define ALR_PIN D2
-#endif
 
-#define MPU_ADDR 0x70
-#define MAX_ADDR 0x36 //hardcoding the I2C addresses for sensors
-#define LOW_BATTERY 10
-#define DEBOUNCE 2000 //constant debouncing of 2 seconds
-
-#define DAC_PIN 25 //for LM3914 SIG pin
-
-WiFiClientSecure wifiClient;
-CertificateManager certificateManager;
-MQTTClient mqttClient(wifiClient, certificateManager);
 DFRobot_MAX17043 battMonitor;
 MPU6050 mpu;
+
 
 int intFlag = 0; //interrupt flag
 const char topic[] = "esp32/testing";
@@ -55,31 +38,7 @@ unsigned long last_ms;
 float yaw_delta_accum = 0.0f;                // integrates short-term yaw change
 unsigned long last_gesture_ms = 0;
 
-// ---- Helpers ----
-bool isStill(float ax_g, float ay_g, float az_g, float gx_dps, float gy_dps, float gz_dps) {
-  float gnorm = sqrtf(ax_g*ax_g + ay_g*ay_g + az_g*az_g);
-  float gyro_mag = sqrtf(gx_dps*gx_dps + gy_dps*gy_dps + gz_dps*gz_dps);
-  return (fabsf(gnorm - 1.0f) < STILL_ACC_G_ERR) && (gyro_mag < STILL_GYRO_DPS);
-}
 
-void calibrateGyroBias() {
-  long sx=0, sy=0, sz=0;
-  for (int i=0; i<BIAS_CAL_SAMPLES; ++i) {
-    int16_t ax,ay,az,gx,gy,gz;
-    mpu.getMotion6(&ax,&ay,&az,&gx,&gy,&gz);
-    sx += gx; sy += gy; sz += gz;
-    delay(2);
-  }
-  gyro_bias_x = (sx/(float)BIAS_CAL_SAMPLES)/GYRO_SCALE;
-  gyro_bias_y = (sy/(float)BIAS_CAL_SAMPLES)/GYRO_SCALE;
-  gyro_bias_z = (sz/(float)BIAS_CAL_SAMPLES)/GYRO_SCALE;
-}
-
-uint8_t battRounding(float percentage) {
-  //convert eg 71.42 -> 70% 
-  int result = round(percentage / 10);
-  return result * 255 / 10; //scaled to analog output
-}
 
 
 void setup()
@@ -99,7 +58,7 @@ void setup()
 
   mpu.initialize();
   Serial.println("MPU6050 connected. Calculating gyro bias...");
-  calibrateGyroBias();
+  calibrateGyroBias(mpu);
   Serial.printf("Gyro bias (dps): x=%.3f y=%.3f z=%.3f\n", gyro_bias_x, gyro_bias_y, gyro_bias_z);
 
   while(battMonitor.begin() != 0) {
@@ -203,4 +162,3 @@ void loop()
     Serial.println("Low power alert interrupt!");
     //put your battery low power alert interrupt service routine here
   }
-}
