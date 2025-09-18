@@ -50,7 +50,7 @@ type BroadcastMessage struct {
 type AREvent struct {
 	EventType string `json:"eventType"`
 	UserID    string `json:"userId"`
-	RoomID    string `json:"roomId"`
+	SessionID string `json:"sessionId"`
 	Timestamp int64  `json:"timestamp"`
 	Data      interface{}
 }
@@ -67,7 +67,7 @@ func (h *Hub) registerClient(client *WSClient) {
 	h.sessions[client.SessionID][client] = true
 
 	h.userSessions[client.UserID] = append(h.userSessions[client.UserID], client)
-	log.Printf("Client %s (User: %s, CN: %s) joined room %s. Room size: %s",
+	log.Printf("Client %s (User: %s, CN: %s) joined room %s. Session size: %v",
 		client.ID, client.UserID, client.ClientCN, client.SessionID, len(h.sessions[client.SessionID]),
 	)
 }
@@ -150,6 +150,8 @@ func (c *WSClient) readPump() {
 			break
 		}
 
+		log.Printf("Raw message from client %s: %s", c.ID, string(message))
+
 		var arEvent AREvent
 		if err := json.Unmarshal(message, &arEvent); err != nil {
 			log.Printf("Invalid message format from client %s: %v", c.ID, err)
@@ -158,7 +160,7 @@ func (c *WSClient) readPump() {
 
 		// Rewriting with c to prevent spoofing
 		arEvent.UserID = c.UserID
-		arEvent.RoomID = c.SessionID
+		arEvent.SessionID = c.SessionID
 		arEvent.Timestamp = time.Now().UnixMilli()
 
 		processedMessage, _ := json.Marshal(arEvent)

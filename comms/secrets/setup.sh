@@ -11,6 +11,7 @@ CERT_DIR="$DEFAULT_DIR"
 DEVICE_PREFIX="$DEFAULT_DEVICE"
 CLIENT_CN=""
 SAN_ENABLED=false
+CUSTOM_DNS=""
 
 usage() {
     echo "Usage: $0 [-ip <ip_address>] [-cn <common_name>] [-dir <directory>] [-device <device_name>] [-san]"
@@ -18,16 +19,16 @@ usage() {
     echo "  -cn <common_name>  : Common name for the client certificate (default: $DEFAULT_CN)"
     echo "  -dir <directory>   : Directory to store certificates (default: $DEFAULT_DIR)"
     echo "  -device <name>     : Device Prefix to store certificates (default: $DEFAULT_DEVICE)"
-    echo "  -san               : Add Subject Alternative Name with the given IP"
+    echo "  -san               : Add Subject Alternative Name with the given IP and localhost DNS"
     echo "  -h, --help         : Display this help message"
     echo ""
     echo "Examples:"
-    echo "  $0                                   # Use defaults"
-    echo "  $0 -ip 192.168.1.100                 # Custom IP, default client CN and dir"
-    echo "  $0 -cn myClient                      # Default IP, custom client CN, default dir"
+    echo "  $0                                   # Use defaults, CN only"
+    echo "  $0 -ip 192.168.1.100                 # Custom IP in CN only"
+    echo "  $0 -cn myClient                      # Default IP, custom client CN"
     echo "  $0 -dir /etc/ssl/mqtt                # Default IP and CN, custom directory"
     echo "  $0 -device esp32"
-    echo "  $0 -device ultra96 -ip 10.0.0.5 -cn myUltra96 -dir ./certs -san"
+    echo "  $0 -device ultra96 -ip 10.0.0.5 -cn myUltra96 -dir ./certs -san  # With SAN extension"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -52,6 +53,10 @@ while [[ $# -gt 0 ]]; do
             SAN_ENABLED=true
             shift 1
             ;;
+        -dns)
+            CUSTOM_DNS="$2"
+            shift 2
+            ;;
         -h|--help)
             usage
             exit 0
@@ -73,6 +78,10 @@ echo "Device Prefix: $DEVICE_PREFIX"
 echo "Server IP Address: $IP_ADDRESS"
 echo "Client Common Name: $CLIENT_CN"
 echo "Certificate Directory: $CERT_DIR"
+echo "SAN Extension: $SAN_ENABLED"
+if [ "$SAN_ENABLED" = true ] && [ -n "$CUSTOM_DNS" ]; then
+    echo "Custom DNS Names: $CUSTOM_DNS"
+fi
 echo "=================================="
 echo ""
 
@@ -97,24 +106,42 @@ openssl req -new -key "$SERVER_KEY" -out server.csr \
 -subj "/C=SG/ST=Singapore/L=Singapore/O=NUS/OU=MQTT/CN=$IP_ADDRESS"
 
 if [ "$SAN_ENABLED" = true ]; then
-    echo "Adding SAN with IP: $IP_ADDRESS"
+    echo "Adding SAN extension with IP: $IP_ADDRESS"
+    
+    # Start building the SAN configuration
     cat > san.cnf <<EOF
 [ v3_req ]
 subjectAltName = @alt_names
 
 [ alt_names ]
 IP.1 = $IP_ADDRESS
-DNS.1 = localhost
 EOF
+
+    # Add custom DNS names if provided
+    if [ -n "$CUSTOM_DNS" ]; then
+        echo "Adding custom DNS names: $CUSTOM_DNS"
+        IFS=',' read -ra DNS_ARRAY <<< "$CUSTOM_DNS"
+        dns_counter=1
+        for dns_name in "${DNS_ARRAY[@]}"; do
+            # Trim whitespace
+            dns_name=$(echo "$dns_name" | xargs)
+            echo "DNS.$dns_counter = $dns_name" >> san.cnf
+            ((dns_counter++))
+        done
+    else
+        # Default to localhost if no custom DNS provided
+        echo "DNS.1 = localhost" >> san.cnf
+        echo "Adding default DNS: localhost"
+    fi
 
     openssl x509 -req -in server.csr -CA "$CA_CRT" -CAkey "$CA_KEY" -CAcreateserial \
     -out "$SERVER_CRT" -days 365 -sha256 -extfile san.cnf -extensions v3_req
     rm san.cnf
 else
+    echo "Using CN only (no SAN extension)"
     openssl x509 -req -in server.csr -CA "$CA_CRT" -CAkey "$CA_KEY" -CAcreateserial \
     -out "$SERVER_CRT" -days 365 -sha256
 fi
-
 
 echo "3. Generating client certificate with CN: $CLIENT_CN..."
 openssl genrsa -out "$CLIENT_KEY" 2048
@@ -131,7 +158,13 @@ echo "Generated files in $CERT_DIR/:"
 echo "  - ${DEVICE_PREFIX}-ca.crt, ${DEVICE_PREFIX}-ca.key (Certificate Authority)"
 echo "  - ${DEVICE_PREFIX}-server.crt, ${DEVICE_PREFIX}-server.key (Server certificate for $IP_ADDRESS)"
 if [ "$SAN_ENABLED" = true ]; then
-    echo "    (with SAN: IP:$IP_ADDRESS, DNS:localhost)"
+    if [ -n "$CUSTOM_DNS" ]; then
+        echo "    (with SAN extension: IP:$IP_ADDRESS, DNS:$CUSTOM_DNS)"
+    else
+        echo "    (with SAN extension: IP:$IP_ADDRESS, DNS:localhost)"
+    fi
+else
+    echo "    (CN only, no SAN extension)"
 fi
 echo "  - ${DEVICE_PREFIX}-client.crt, ${DEVICE_PREFIX}-client.key (Client certificate for $CLIENT_CN)"
 echo "========================================"
