@@ -18,15 +18,15 @@ func LoadConfig() *Config {
 	WSPort := os.Getenv("WS_PORT")
 
 	if caCert == "" {
-		caCert = "../secrets/ca.crt"
+		caCert = "../secrets/visualiser-ca.crt"
 	}
 
 	if serverCert == "" {
-		serverCert = "../secrets/server.crt"
+		serverCert = "../secrets/visualiser-server.crt"
 	}
 
 	if serverKey == "" {
-		serverKey = "../secrets/server.key"
+		serverKey = "../secrets/visualiser-server.key"
 	}
 
 	if WSPort == "" {
