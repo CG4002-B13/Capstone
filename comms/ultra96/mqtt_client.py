@@ -1,6 +1,6 @@
 import time
 import ssl
-from config import CERT_NAME
+from config import CERT_NAME, MODE
 from pathlib import Path
 import paho.mqtt.client as mqtt
 
@@ -22,7 +22,7 @@ class SecureMQTTClient:
         self._loadCertificate()
 
     def _loadCertificate(self):
-        secrets_dir = Path(__file__).resolve().parent.parent / "secrets" / "dev"
+        secrets_dir = Path(__file__).resolve().parent.parent / "secrets" / MODE
 
         cert_files = {
             "ca": str(secrets_dir / f"{CERT_NAME}ca.crt"),
