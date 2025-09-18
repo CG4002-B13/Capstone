@@ -81,14 +81,7 @@ fi
 # Determine server certificate behavior based on -san flag
 if [ "$SAN_ENABLED" = true ]; then
     # -san specified: use IP addresses in SAN, CN can be anything reasonable
-    FIRST_IP=$(echo "$IP_ADDRESS" | cut -d',' -f1 | xargs)
-    SERVER_CN="$FIRST_IP"
-
-    if [ "$SAN_ENABLED" = true ]; then
-        echo "SAN extension enabled: all IPs and DNS names will go into SAN"
-    else
-        echo "SAN not enabled: only CN will be used, no SAN"
-    fi
+    SERVER_CN="$IP_ADDRESS"  # Use first/main IP as CN
 else
     # -san not specified: use first IP value for CN only, no SAN
     # Extract first IP if multiple IPs provided
