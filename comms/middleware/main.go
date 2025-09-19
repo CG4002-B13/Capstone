@@ -170,6 +170,26 @@ func (c *WSClient) readPump() {
 			Sender:    c,
 			EventType: arEvent.EventType,
 		}
+
+		// Send acknowledgment for debug.ping messages
+		if arEvent.EventType == "debug.ping" {
+			ackEvent := AREvent{
+				EventType: "debug.pong",
+				UserID:    c.UserID,
+				SessionID: c.SessionID,
+				Timestamp: time.Now().UnixMilli(),
+				Data: map[string]interface{}{
+					"originalTimestamp": arEvent.Timestamp,
+					"message":           "ping received",
+				},
+			}
+			ackMessage, _ := json.Marshal(ackEvent)
+			select {
+			case c.Send <- ackMessage:
+			default:
+				// If the send channel is full, we skip the acknowledgment
+			}
+		}
 	}
 }
 
