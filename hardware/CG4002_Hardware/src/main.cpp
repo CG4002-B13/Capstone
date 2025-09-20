@@ -13,7 +13,9 @@ MPU6050 mpu;
 
 
 int intFlag = 0; //interrupt flag
-const char topic[] = "esp32/testing";
+const char topic0[] = "esp32/voice_data";
+const char topic1[] = "esp32/voice_result";
+const char topic2[] = "esp32/gesture_data";
 
 void interruptCallBack() {
   intFlag = 1;
@@ -151,7 +153,7 @@ void loop()
     message += "%\n";
     message += "Pitch=%6.2f  Roll=%6.2f  Yaw=%6.2f\n", pitch_deg, roll_deg, yaw_deg;
 
-    mqttClient.publish(topic, message.c_str());
+    mqttClient.publish(topic2, message.c_str());
     Serial.print("Sent message: " + message);
     dacWrite(DAC_PIN, battRounding(battMonitor.readPercentage()));
   }
@@ -160,5 +162,10 @@ void loop()
     intFlag = 0;
     battMonitor.clearInterrupt();
     Serial.println("Low power alert interrupt!");
+    tone(8, NOTE_A, NOTE_DURATION);
+    tone(8, 0, NOTE_DURATION); //silence?
+    tone(8, NOTE_A, NOTE_DURATION);
+    tone(8, 0, NOTE_DURATION); //silence?
+    tone(8, NOTE_A, NOTE_DURATION);
     //put your battery low power alert interrupt service routine here
   }
