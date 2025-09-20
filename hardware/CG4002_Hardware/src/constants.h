@@ -1,14 +1,33 @@
+//CONSTANTS FOR ESP32
+
+//I2C addresses
+#define MPU_ADDR 0x70
+#define MAX_ADDR 0x36
+
+//MAX17043 constants
 #ifdef __AVR__
   #define ALR_PIN 2
 #else
   #define ALR_PIN D2
 #endif
-
-#define MPU_ADDR 0x70
-#define MAX_ADDR 0x36 //hardcoding the I2C addresses for sensors
 #define LOW_BATTERY 10
-#define DEBOUNCE 2000 //constant debouncing of 2 seconds
 
+#define DAC_PIN 25
+
+#define MIC_WS 15
+#define MIC_SCK 14
+#define I2S_PORT I2S_NUM_0
+
+#define SAMPLING_RATE 16000 //Hz
+#define BITS_PER_SAMPLE 16
+#define CHANNELS 1
+#define RECORD_TIME 2 //seconds
+#define HEADER_SIZE 44
+
+
+//buzzer constants
+#define DEBOUNCE 2000 //constant debouncing of 2 seconds
+#define NOTE_DURATION 250 //note plays for 250ms
 //Music notes
 #define NOTE_B0  31
 #define NOTE_C1  33
