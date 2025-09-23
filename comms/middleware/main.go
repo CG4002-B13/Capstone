@@ -5,40 +5,41 @@ import (
 	"net/http"
 
 	"github.com/ParthGandhiNUS/CG4002/config"
-	"github.com/ParthGandhiNUS/CG4002/internal"
+	"github.com/ParthGandhiNUS/CG4002/internal/mqttwrapper"
+	"github.com/ParthGandhiNUS/CG4002/internal/websocket"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
 func main() {
 	env := config.LoadConfig()
 
-	wsTLSConfig := internal.WSTLSConfig{
+	wsTLSConfig := websocket.WSTLSConfig{
 		CACertFile:     env.CACertLocation,
 		ServerCertFile: env.ServerCertLocation,
 		ServerKeyFile:  env.ServerKeyLocation,
 	}
 
-	mqttTLSConfig := internal.MQTTTLSConfig{
+	mqttTLSConfig := mqttwrapper.MQTTTLSConfig{
 		CACertFile:     env.CACertLocation,
 		ClientCertFile: env.ClientCertLocation,
 		ClientKeyFile:  env.ClientKeyLocation,
 	}
 
-	wsTLSConf, err := internal.SetupWebsocketTLS(wsTLSConfig)
+	wsTLSConf, err := websocket.SetupWebsocketTLS(wsTLSConfig)
 	if err != nil {
 		log.Fatal("Failed to setup TLS:", err)
 	}
 
-	mqttTLSConf, err := internal.SetupMQTTTLS(mqttTLSConfig)
+	mqttTLSConf, err := mqttwrapper.SetupMQTTTLS(mqttTLSConfig)
 	if err != nil {
 		log.Fatal("Failed to authenticate with MQTT Broker: ", err)
 	}
 
-	hub := internal.NewHub()
+	hub := websocket.NewHub()
 	go hub.Run()
 
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		internal.HandleWebsocket(hub, w, r)
+		websocket.HandleWebsocket(hub, w, r)
 	})
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -69,7 +70,7 @@ func main() {
 		}
 	}()
 
-	mqttClient := internal.NewMQTTClient("GolangService", env.MQTTHost, env.MQTTPort, env.MQTTUser, env.MQTTPass, mqttTLSConf)
+	mqttClient := mqttwrapper.NewMQTTClient("GolangService", env.MQTTHost, env.MQTTPort, env.MQTTUser, env.MQTTPass, mqttTLSConf)
 
 	topics := []string{"/gestures", "/voice_result"}
 
