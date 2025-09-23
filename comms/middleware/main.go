@@ -6,20 +6,32 @@ import (
 
 	"github.com/ParthGandhiNUS/CG4002/config"
 	"github.com/ParthGandhiNUS/CG4002/internal"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
 func main() {
-	envConfig := config.LoadConfig()
+	env := config.LoadConfig()
 
-	tlsConfig := internal.TLSConfig{
-		CACertFile:     envConfig.CACertLocation,
-		ServerCertFile: envConfig.ServerCertLocation,
-		ServerKeyFile:  envConfig.ServerKeyLocation,
+	wsTLSConfig := internal.WSTLSConfig{
+		CACertFile:     env.CACertLocation,
+		ServerCertFile: env.ServerCertLocation,
+		ServerKeyFile:  env.ServerKeyLocation,
 	}
 
-	tlsConf, err := internal.SetupTLSConfig(tlsConfig)
+	mqttTLSConfig := internal.MQTTTLSConfig{
+		CACertFile:     env.CACertLocation,
+		ClientCertFile: env.ClientCertLocation,
+		ClientKeyFile:  env.ClientKeyLocation,
+	}
+
+	wsTLSConf, err := internal.SetupWebsocketTLS(wsTLSConfig)
 	if err != nil {
 		log.Fatal("Failed to setup TLS:", err)
+	}
+
+	mqttTLSConf, err := internal.SetupMQTTTLS(mqttTLSConfig)
+	if err != nil {
+		log.Fatal("Failed to authenticate with MQTT Broker: ", err)
 	}
 
 	hub := internal.NewHub()
@@ -42,16 +54,33 @@ func main() {
 	})
 
 	server := &http.Server{
-		Addr:      ":" + envConfig.WebSocketPort,
-		TLSConfig: tlsConf,
+		Addr:      ":" + env.WebSocketPort,
+		TLSConfig: wsTLSConf,
 	}
 
-	log.Printf("Starting secure WebSocket server on port :%s", envConfig.WebSocketPort)
-	log.Printf("Secure WebSocket endpoint: wss://localhost:%s/ws?userId=<USER_ID>&sessionId=<SESSION_ID>", envConfig.WebSocketPort)
-	log.Printf("CA Certificate: %s", tlsConfig.CACertFile)
-	log.Printf("Server Certificate: %s", tlsConfig.ServerCertFile)
+	log.Printf("Starting secure WebSocket server on port :%s", env.WebSocketPort)
+	log.Printf("Secure WebSocket endpoint: wss://localhost:%s/ws?userId=<USER_ID>&sessionId=<SESSION_ID>", env.WebSocketPort)
+	log.Printf("CA Certificate: %s", wsTLSConfig.CACertFile)
+	log.Printf("Server Certificate: %s", wsTLSConfig.ServerCertFile)
 
-	if err := server.ListenAndServeTLS(tlsConfig.ServerCertFile, tlsConfig.ServerKeyFile); err != nil {
-		log.Fatal("Server failed to start:", err)
+	go func() {
+		if err := server.ListenAndServeTLS(wsTLSConfig.ServerCertFile, wsTLSConfig.ServerKeyFile); err != nil {
+			log.Fatal("Server failed to start:", err)
+		}
+	}()
+
+	mqttClient := internal.NewMQTTClient("GolangService", env.MQTTHost, env.MQTTPort, env.MQTTUser, env.MQTTPass, mqttTLSConf)
+
+	topics := []string{"/gestures", "/voice_result"}
+
+	for _, topic := range topics {
+		go func() {
+			mqttClient.Subscribe(topic, 0, func(c mqtt.Client, m mqtt.Message) {
+				log.Printf("[%s]: %s", topic, string(m.Payload()))
+			})
+		}()
 	}
+
+	select {}
+
 }

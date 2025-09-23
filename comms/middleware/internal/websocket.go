@@ -2,12 +2,10 @@ package internal
 
 import (
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"sync"
 	"time"
 
@@ -48,7 +46,7 @@ type AREvent struct {
 	Data      interface{} `json:"data"`
 }
 
-type TLSConfig struct {
+type WSTLSConfig struct {
 	CACertFile     string
 	ServerCertFile string
 	ServerKeyFile  string
@@ -206,30 +204,23 @@ func (c *WSClient) writePump() {
 }
 
 // Imports required TLS certs
-func SetupTLSConfig(config TLSConfig) (*tls.Config, error) {
+func SetupWebsocketTLS(config WSTLSConfig) (*tls.Config, error) {
 	// load CA cert
-	caCert, err := os.ReadFile(config.CACertFile)
+	caCertPool, err := LoadCACert(config.CACertFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read CA certificate: %v", err)
+		return nil, err
 	}
 
-	caCertPool := x509.NewCertPool()
-	if !caCertPool.AppendCertsFromPEM(caCert) {
-		return nil, fmt.Errorf("failed to parse CA certificate")
-	}
-
-	serverCert, err := tls.LoadX509KeyPair(config.ServerCertFile, config.ServerKeyFile)
+	serverCert, err := LoadKeyPair(config.ServerCertFile, config.ServerKeyFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load server certificates: %v", err)
+		return nil, err
 	}
 
-	tlsConfig := &tls.Config{
+	return &tls.Config{
 		Certificates: []tls.Certificate{serverCert},
 		ClientCAs:    caCertPool,
 		ClientAuth:   tls.RequireAndVerifyClientCert,
-	}
-
-	return tlsConfig, nil
+	}, nil
 }
 
 // Setup Websocket with TLS client certificate verification
