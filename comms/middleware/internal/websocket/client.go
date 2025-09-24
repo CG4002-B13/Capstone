@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/ParthGandhiNUS/CG4002/internal/events/types"
 	"github.com/gorilla/websocket"
 )
 
@@ -17,15 +18,6 @@ type WSClient struct {
 	Send      chan []byte
 	Hub       *Hub
 	ClientCN  string
-}
-
-// AREvent represents a generic event payload
-type AREvent struct {
-	EventType string      `json:"eventType"`
-	UserID    string      `json:"userId"`
-	SessionID string      `json:"sessionId"`
-	Timestamp int64       `json:"timestamp"`
-	Data      interface{} `json:"data"`
 }
 
 // Read messages from client and forward to hub
@@ -52,7 +44,7 @@ func (c *WSClient) readPump() {
 
 		log.Printf("Raw message from client %s: %s", c.ID, string(message))
 
-		var websocketEvent AREvent
+		var websocketEvent types.WebsocketEvent
 		if err := json.Unmarshal(message, &websocketEvent); err != nil {
 			log.Printf("Invalid message format from client %s: %v", c.ID, err)
 			continue
@@ -62,13 +54,7 @@ func (c *WSClient) readPump() {
 		websocketEvent.SessionID = c.SessionID
 		websocketEvent.Timestamp = time.Now().UnixMilli()
 
-		processedMessage, _ := json.Marshal(websocketEvent)
-		c.Hub.broadcast <- BroadcastMessage{
-			SessionID: c.SessionID,
-			Data:      processedMessage,
-			Sender:    c,
-			EventType: websocketEvent.EventType,
-		}
+		c.Hub.broadcast <- websocketEvent
 	}
 }
 

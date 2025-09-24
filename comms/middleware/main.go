@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/ParthGandhiNUS/CG4002/config"
+	"github.com/ParthGandhiNUS/CG4002/internal/events"
 	"github.com/ParthGandhiNUS/CG4002/internal/mqttwrapper"
 	"github.com/ParthGandhiNUS/CG4002/internal/websocket"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -37,6 +38,7 @@ func main() {
 
 	hub := websocket.NewHub()
 	go hub.Run()
+	events.SetHub(hub)
 
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		websocket.HandleWebsocket(hub, w, r)
@@ -72,14 +74,13 @@ func main() {
 
 	mqttClient := mqttwrapper.NewMQTTClient("GolangService", env.MQTTHost, env.MQTTPort, env.MQTTUser, env.MQTTPass, mqttTLSConf)
 
-	topics := []string{"/gestures", "/voice_result"}
+	handlers := map[string]mqtt.MessageHandler{
+		"/gestures":     events.HandleGestures,
+		"/voice_result": events.HandleVoiceResult,
+	}
 
-	for _, topic := range topics {
-		go func() {
-			mqttClient.Subscribe(topic, 0, func(c mqtt.Client, m mqtt.Message) {
-				log.Printf("[%s]: %s", topic, string(m.Payload()))
-			})
-		}()
+	for topic, handler := range handlers {
+		mqttClient.Subscribe(topic, 0, handler)
 	}
 
 	select {}

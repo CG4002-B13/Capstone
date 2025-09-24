@@ -1,26 +1,21 @@
 package websocket
 
 import (
+	"encoding/json"
 	"log"
 	"sync"
+
+	"github.com/ParthGandhiNUS/CG4002/internal/events/types"
 )
 
 // Hub manages all websocket clients and sessions
 type Hub struct {
 	sessions     map[string]map[*WSClient]bool
 	userSessions map[string][]*WSClient
-	broadcast    chan BroadcastMessage
+	broadcast    chan types.WebsocketEvent
 	register     chan *WSClient
 	unregister   chan *WSClient
 	mutex        sync.RWMutex
-}
-
-// BroadcastMessage holds a message for broadcasting to a session
-type BroadcastMessage struct {
-	SessionID string
-	Data      []byte
-	Sender    *WSClient
-	EventType string
 }
 
 // Create a new hub
@@ -28,7 +23,7 @@ func NewHub() *Hub {
 	return &Hub{
 		sessions:     make(map[string]map[*WSClient]bool),
 		userSessions: make(map[string][]*WSClient),
-		broadcast:    make(chan BroadcastMessage),
+		broadcast:    make(chan types.WebsocketEvent),
 		register:     make(chan *WSClient),
 		unregister:   make(chan *WSClient),
 	}
@@ -98,22 +93,44 @@ func (h *Hub) unregisterClient(client *WSClient) {
 }
 
 // Helper function to send message to all clients connected to the server
-func (h *Hub) broadcastMessage(message BroadcastMessage) {
+func (h *Hub) broadcastMessage(event types.WebsocketEvent) {
 	h.mutex.RLock()
 	defer h.mutex.RUnlock()
 
-	if clients, ok := h.sessions[message.SessionID]; ok {
+	data, _ := json.Marshal(event)
+
+	// Send to all clients
+	if event.UserID == "*" {
+		for _, clients := range h.sessions {
+			for client := range clients {
+				select {
+				case client.Send <- data:
+				default:
+					close(client.Send)
+					delete(clients, client)
+				}
+			}
+		}
+		return
+	}
+
+	if clients, ok := h.sessions[event.SessionID]; ok {
 		for client := range clients {
-			if client == message.Sender {
+			if client.UserID == event.UserID && client.ID == event.SessionID {
 				continue // dont need to send itself
 			}
 
 			select {
-			case client.Send <- message.Data:
+			case client.Send <- data:
 			default:
 				close(client.Send)
 				delete(clients, client)
 			}
 		}
 	}
+}
+
+// Function to send message to broadcast channel
+func (h *Hub) Broadcast(event types.WebsocketEvent) {
+	h.broadcast <- event
 }

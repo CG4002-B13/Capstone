@@ -1,9 +1,10 @@
-package events
+package types
 
 type ActionType string
 type CommandType string
 type ObjectType string
 type StatusType string
+type EventType string
 
 const (
 	// Gesture Actions
@@ -27,9 +28,15 @@ const (
 	TV    ObjectType = "TV"
 	BED   ObjectType = "BED"
 	PLANT ObjectType = "PLANT"
+
+	// Event Type
+	COMMAND_GESTURE    EventType = "COMMAND_GESTURE"
+	COMMAND_SPEECH     EventType = "COMMAND_SPEECH"
+	SCREENSHOT_SEND    EventType = "SCREENSHOT_SEND"
+	SCREENSHOT_RECEIVE EventType = "SCREENSHOT_RECEIVE"
 )
 
-// /Gestures
+// /gestures
 type GestureCommand struct {
 	Type ActionType `json:"type"`
 	Axes []float64  `json:"axes"`
@@ -53,7 +60,7 @@ type VoiceCommand struct {
 
 // To publish to websocket
 type WebsocketEvent struct {
-	EventType string      `json:"eventType"`
+	EventType EventType   `json:"eventType"`
 	UserID    string      `json:"userId"`
 	SessionID string      `json:"sessionId"`
 	Timestamp int64       `json:"timestamp"`
