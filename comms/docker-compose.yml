@@ -12,3 +12,18 @@ services:
       - ./mosquitto/config:/mosquitto/config
       - ./mosquitto/data:/mosquitto/data
       - ./mosquitto/log:/mosquitto/log
+    
+  golang-service:
+    container_name: golang-service
+    restart: unless-stopped
+    user: 1000:1000
+    build:
+      context: ./middleware
+      dockerfile: Dockerfile
+    env_file:
+      - ./middleware/.env
+    ports:
+      - "8443:8443"
+      - "8883:8883"
+    volumes:
+      - ./secrets/deploy:/secrets/deploy:ro
