@@ -12,6 +12,7 @@ services:
       - ./mosquitto/config:/mosquitto/config
       - ./mosquitto/data:/mosquitto/data
       - ./mosquitto/log:/mosquitto/log
+      - ./secrets:/secrets
     
   golang-service:
     container_name: golang-service
@@ -21,11 +22,11 @@ services:
       context: ./middleware
       dockerfile: Dockerfile
     environment:
-      - CA_CERT=../secrets/${MODE}/devices-ca.crt
-      - SERVER_CERT=../secrets/${MODE}/devices-server.crt
-      - SERVER_KEY=../secrets/${MODE}/devices-server.key
-      - CLIENT_CERT=../secrets/${MODE}/devices-client.crt
-      - CLIENT_KEY=../secrets/${MODE}/devices-client.key
+      - CA_CERT=../secrets/devices/devices-ca.crt
+      - SERVER_CERT=../secrets/devices/devices-server.crt
+      - SERVER_KEY=../secrets/devices/devices-server.key
+      - CLIENT_CERT=../secrets/devices/devices-client.crt
+      - CLIENT_KEY=../secrets/devices/devices-client.key
       - WS_PORT=8443
       - MQTT_HOST=mqtt-broker
       - MQTT_PORT=8883
