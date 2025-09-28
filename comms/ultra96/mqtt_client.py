@@ -22,7 +22,7 @@ class SecureMQTTClient:
         self._loadCertificate()
 
     def _loadCertificate(self):
-        secrets_dir = Path(__file__).resolve().parent.parent / "secrets" / MODE
+        secrets_dir = Path(__file__).resolve().parent.parent / "secrets" / "devices"
 
         cert_files = {
             "ca": str(secrets_dir / f"{CERT_NAME}ca.crt"),
