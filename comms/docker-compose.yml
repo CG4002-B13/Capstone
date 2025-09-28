@@ -20,10 +20,20 @@ services:
     build:
       context: ./middleware
       dockerfile: Dockerfile
-    env_file:
-      - ./middleware/.env
+    environment:
+      - CA_CERT=../secrets/${MODE}/devices-ca.crt
+      - SERVER_CERT=../secrets/${MODE}/devices-server.crt
+      - SERVER_KEY=../secrets/${MODE}/devices-server.key
+      - CLIENT_CERT=../secrets/${MODE}/devices-client.crt
+      - CLIENT_KEY=../secrets/${MODE}/devices-client.key
+      - WS_PORT=8443
+      - MQTT_HOST=mqtt-broker
+      - MQTT_PORT=8883
+      - MQTT_USER=${MQTT_USER}
+      - MQTT_PASS=${MQTT_PASS}
     ports:
       - "8443:8443"
-      - "8883:8883"
     volumes:
-      - ./secrets/deploy:/secrets/deploy:ro
+      - ./secrets:/secrets:ro
+    depends_on:
+      - mqtt-broker
