@@ -6,7 +6,7 @@ phases:
       - echo Logging in to Amazon ECR...
       - aws --version
       - REPOSITORY_URI=828171332858.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/daviankho/capstone
-      - $(aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REPOSITORY_URI)
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REPOSITORY_URI
   build:
     commands:
       - echo Build started on `date`
