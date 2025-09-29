@@ -18,7 +18,9 @@ services:
     container_name: golang-service
     restart: unless-stopped
     user: 1000:1000
-    image: 828171332858.dkr.ecr.ap-southeast-1.amazonaws.com/daviankho/capstone:latest
+    build:
+      context: ./middleware
+      dockerfile: Dockerfile
     environment:
       - CA_CERT=../secrets/devices/devices-ca.crt
       - SERVER_CERT=../secrets/devices/devices-server.crt
