@@ -3,10 +3,10 @@
 ### Script for AWS CodeDeploy to execute pre-install ###
 set -e
 
-cd /home/ubuntu/Capstone || exit 1
+cd $(dirname $0)/.. || exit 1
 
 echo "Stopping running containers..."
-docker compose down
+docker compose -f comms/middleware/docker-compose.yml down
 
 echo "Cleaning up old images..."
 docker image prune -f
