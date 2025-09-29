@@ -3,7 +3,6 @@ services:
     image: eclipse-mosquitto:2
     container_name: mqtt-broker
     restart: unless-stopped
-    user: 1000:1000
     ports:
       - "1883:1883"
       - "8883:8883"
@@ -17,7 +16,6 @@ services:
   golang-service:
     container_name: golang-service
     restart: unless-stopped
-    user: 1000:1000
     image: 828171332858.dkr.ecr.ap-southeast-1.amazonaws.com/daviankho/capstone:latest
     environment:
       - CA_CERT=../secrets/devices/devices-ca.crt
