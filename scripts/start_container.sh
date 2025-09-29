@@ -3,12 +3,12 @@
 ### Script for AWS CodeDeploy to execute pre-install ###
 set -e
 
-cd $(dirname $0)/.. || exit 1
+cd /home/ubuntu/app/comms || exit 1
 
 echo "Pulling latest images from ECR..."
-docker compose pull
+docker compose -f docker-compose.yml pull
 
 echo "Starting containers..."
-docker compose -f comms/middleware/docker-compose.yml up -d
+docker compose -f docker-compose.yml up -d
 
 echo "Deployment finished successfully."
