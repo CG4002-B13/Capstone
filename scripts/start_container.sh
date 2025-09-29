@@ -6,9 +6,9 @@ set -e
 cd /home/ubuntu/app/comms || exit 1
 
 echo "Pulling latest images from ECR..."
-docker compose -f docker-compose.yml pull
+sudo docker compose -f docker-compose.yml pull
 
 echo "Starting containers..."
-docker compose -f docker-compose.yml up -d
+sudo docker compose -f docker-compose.yml up -d
 
 echo "Deployment finished successfully."
