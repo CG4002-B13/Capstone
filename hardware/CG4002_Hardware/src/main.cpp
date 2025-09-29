@@ -1,4 +1,4 @@
-#include <Arduino.h>
+#include "CertificateManager.hpp"
 #include "DFRobot_MAX17043.h"
 #include "MPU6050.h"
 #include "Wire.h"
@@ -53,110 +53,108 @@ void setup()
   delay(400);
   while(!Serial);
 
-  pinMode(ALR_PIN, INPUT_PULLUP); //sets ALR_PIN to PULLUP mode
-  attachInterrupt(digitalPinToInterrupt(ALR_PIN), interruptCallBack, FALLING); //sets interrupt to ALR_PIN on FALLING edge
+    pinMode(ALR_PIN, INPUT_PULLUP); // sets ALR_PIN to PULLUP mode
+    attachInterrupt(digitalPinToInterrupt(ALR_PIN), interruptCallBack,
+                    FALLING); // sets interrupt to ALR_PIN on FALLING edge
 
-  Wire.begin();
+    Wire.begin(); // start I2C comms
 
-  mpu.initialize();
-  Serial.println("MPU6050 connected. Calculating gyro bias...");
-  calibrateGyroBias(mpu);
-  Serial.printf("Gyro bias (dps): x=%.3f y=%.3f z=%.3f\n", gyro_bias_x, gyro_bias_y, gyro_bias_z);
+    mpu.initialize();
+    Serial.println("MPU6050 connected. Calculating gyro bias...");
+    calibrate_gyro_bias(mpu);
+    Serial.printf("Gyro bias (dps): x=%.3f y=%.3f z=%.3f\n", gyro_bias_x,
+                  gyro_bias_y, gyro_bias_z);
 
-  while(battMonitor.begin() != 0) {
-    Serial.println("Couldn't connect to MAX17043. Retrying...");
-    delay(2000);
-  }
-  delay(2);
-  Serial.println("Battery monitor successfully connected!");
-  battMonitor.setInterrupt(LOW_BATTERY); //sends an interrupt to warn when the battery hits the threshold
+    while (battMonitor.begin() != 0) {
+        Serial.println("Couldn't connect to MAX17043. Retrying...");
+        delay(2000);
+    }
+    delay(2);
+    Serial.println("Battery monitor successfully connected!");
+    battMonitor.setInterrupt(LOW_BATTERY); // sends an interrupt to warn when
+                                           // the battery hits the threshold
 
-  //pinMode(D8, INPUT); //for the two switches
-  //pinMode(D9, INPUT);
-
+    i2s_init();
+    pinMode(BUTTON_1, INPUT_PULLUP); // for the two switches
+    // BUTTON_1 functions: select/deselect item
+    pinMode(BUTTON_2, INPUT_PULLUP);
+    // BUTTON_2 functions: toggle rotate/movement, when item is deselected send voice message
+    // BUTTON_1 + BUTTON_2: Screenshot?
+    pinMode(BUZZER, OUTPUT);
 }
 
-void loop()
-{
-  mqttClient.loop();
- // Read raw IMU
-  int16_t ax, ay, az, gx, gy, gz;
-  mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+void loop() {
 
-  // Timing
-  unsigned long now = millis();
-  float dt = (now - last_ms) / 1000.0f;
-  if (dt <= 0.0f) dt = 1e-3f;
-  last_ms = now;
-
-  // Convert to physical units
-  float AccX = ax / ACC_SCALE;
-  float AccY = ay / ACC_SCALE;
-  float AccZ = az / ACC_SCALE;
-  float GyroX = gx / GYRO_SCALE - gyro_bias_x;
-  float GyroY = gy / GYRO_SCALE - gyro_bias_y;
-  float GyroZ = gz / GYRO_SCALE - gyro_bias_z;
-
-  // Low-pass accel (for more stable pitch/roll)
-  float acc_alpha = dt / (ACC_LP_TAU + dt);     // 0..1
-  accx_lp += acc_alpha * (AccX - accx_lp);
-  accy_lp += acc_alpha * (AccY - accy_lp);
-  accz_lp += acc_alpha * (AccZ - accz_lp);
-
-  // Pitch/Roll from accel
-  float accPitch_deg = atan2f(accy_lp, sqrtf(accx_lp*accx_lp + accz_lp*accz_lp)) * 180.0f / PI;
-  float accRoll_deg  = atan2f(-accx_lp, accz_lp) * 180.0f / PI;
-
-  // Integrate gyro angles
-  float pitch_gyro = pitch_deg + GyroX * dt;
-  float roll_gyro  = roll_deg  + GyroY * dt;
-  float yaw_gyro   = yaw_deg   + GyroZ * dt;  // relative, will drift over minutes
-
-  // Complementary fuse: accel corrects pitch/roll
-  pitch_deg = (1.0f - COMP_ALPHA) * pitch_gyro + COMP_ALPHA * accPitch_deg;
-  roll_deg  = (1.0f - COMP_ALPHA) * roll_gyro  + COMP_ALPHA * accRoll_deg;
-  yaw_deg   = yaw_gyro;
-
-  // Keep yaw in [-180, 180]
-  if (yaw_deg > 180)  yaw_deg -= 360;
-  if (yaw_deg < -180) yaw_deg += 360;
-
-  // Adaptive gyro bias when still (slowly trims residual drift)
-  if (isStill(AccX, AccY, AccZ, GyroX + gyro_bias_x, GyroY + gyro_bias_y, GyroZ + gyro_bias_z)) {
-    float k = 0.002f; // small adaptation per cycle when still
-    gyro_bias_x = (1.0f - k)*gyro_bias_x + k*(gx / GYRO_SCALE);
-    gyro_bias_y = (1.0f - k)*gyro_bias_y + k*(gy / GYRO_SCALE);
-    gyro_bias_z = (1.0f - k)*gyro_bias_z + k*(gz / GYRO_SCALE);
-    // Optional gentle yaw damping while still (prevents slow creep)
-    yaw_deg *= 0.999f;
-  }
-
-  // ---- Simple twist gesture (left/right) around Z ----
-  // Integrate short-window yaw change and threshold it.
-  yaw_delta_accum += GyroZ * dt;                // deg accumulated since last report
-  if (fabsf(yaw_delta_accum) > 25.0f && (now - last_gesture_ms) > 250) {
-    if (yaw_delta_accum > 0) Serial.println("[gesture] Twist Right");
-    else                     Serial.println("[gesture] Twist Left");
-    yaw_delta_accum = 0.0f;
-    last_gesture_ms = now;
-  }
-
-  // Output (rate-limit to keep serial readable)
-  static unsigned long lastMillis = 0;
-  if((now - lastMillis) > DEBOUNCE) {
-    lastMillis = now;
-    String message = "voltage: ";
-    message += battMonitor.readVoltage();
-    message += "mV\n";
-    message += "percentage: ";
-    message += battMonitor.readPercentage();
-    message += "%\n";
-    message += "Pitch=%6.2f  Roll=%6.2f  Yaw=%6.2f\n", pitch_deg, roll_deg, yaw_deg;
-
-    mqttClient.publish(topic2, message.c_str());
-    Serial.print("Sent message: " + message);
-    dacWrite(DAC_PIN, battRounding(battMonitor.readPercentage()));
-  }
+    mqttClient.loop();
+    mpu_loop(mpu);
+    unsigned long now = millis();
+    static unsigned long button_debounce = 0;
+    if (digitalRead(BUTTON_1) == LOW && digitalRead(BUTTON_2) == LOW) {
+        //screenshot 
+    }
+    switch (button_state) {
+    case 0:
+        // No item selected
+        if (digitalRead(BUTTON_1) == LOW && digitalRead(BUTTON_2) == HIGH) {
+              tone(BUZZER, NOTE_D5, NOTE_DURATION); //select an item
+              String message = "SELECT";
+              mqttClient.publish(topic2, message.c_str());
+              //if acknowledge, send another buzz
+              button_state = 1;
+        } else if (digitalRead(BUTTON_2) == LOW && !isRecording) {
+            tone(BUZZER, NOTE_C5, NOTE_DURATION); // start recording
+            record_voice();
+            delay(100); // to allow data to be stored properly
+            mqttClient.publish(topic0, "Incoming voice message");
+            for (size_t offset = 0; offset < total_samples;
+                 offset += chunk_size) {
+                char buffer[chunk_size * sizeof(uint16_t)];
+                memcpy(buffer, data, chunk_size * sizeof(uint16_t));
+                int len = min(chunk_size, total_samples - offset);
+                mqttClient.publish(topic0, buffer);
+                delay(10);
+            }
+            mqttClient.publish(topic0, "Completed sending voice message");
+            tone(BUZZER, NOTE_C6, NOTE_DURATION); // completed recording
+          }
+        break;
+    case 1:
+            // Item selected
+            static unsigned long last_time = 0;
+            if (now - last_time > DEBOUNCE) { //can deal w the debounce calibration later
+              String message = "";
+              message += "Pitch=%6.2f  Roll=%6.2f  Yaw=%6.2f\n", pitch_deg,
+                  roll_deg, yaw_deg;
+              //figure out how to move objects using this
+              mqttClient.publish(topic2, message.c_str());
+              Serial.print("Sent message: " + message);
+            }
+        if (digitalRead(BUTTON_1) == LOW && digitalRead(BUTTON_2) == HIGH) {
+            //deselect item
+            tone(BUZZER, NOTE_D5, NOTE_DURATION); //select an item
+            String message = "SELECT";
+            mqttClient.publish(topic2, message.c_str());
+            //if acknowledge, send another buzz
+            button_state = 0;
+        } else if (digitalRead(BUTTON_2) == LOW && digitalRead(BUTTON_1) == HIGH) {
+          String message = "TOGGLE";
+        }
+        break;
+    default:
+        break;
+    }
+        // Output (rate-limit to keep serial readable)
+        static unsigned long lastMillis = 0;
+        if ((now - lastMillis) > DEBOUNCE) {
+            lastMillis = now;
+            String message = "voltage: ";
+            message += battMonitor.readVoltage();
+            message += "mV\n";
+            message += "percentage: ";
+            message += battMonitor.readPercentage();
+            message += "%\n";
+            dacWrite(DAC_PIN, batt_rounding(battMonitor.readPercentage()));
+        }
 
   if(intFlag == 1) {
     intFlag = 0;

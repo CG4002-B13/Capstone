@@ -13,15 +13,18 @@
 #define LOW_BATTERY 10
 
 #define DAC_PIN 25
+#define BUTTON_1 6
+#define BUTTON_2 7
+#define BUZZER 8
 
 #define MIC_WS 15
 #define MIC_SCK 14
-#define I2S_PORT I2S_NUM_0
+#define MIC_SD 32
 
 #define SAMPLING_RATE 16000 //Hz
 #define BITS_PER_SAMPLE 16
 #define CHANNELS 1
-#define RECORD_TIME 2 //seconds
+#define RECORD_TIME 1 //seconds
 #define HEADER_SIZE 44
 
 
