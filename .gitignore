@@ -16,6 +16,6 @@ secrets/*.key
 **/*.csr
 **/*.pem
 
-mlp.pth
 data/
+logits.csv
 model.pth
