@@ -1,25 +1,38 @@
 import torch.nn as nn
+import torch
 
 class CNN(nn.Module):
     def __init__(self, n_classes):
         super().__init__()
-        self.features = nn.Sequential(
-                nn.Conv2d(1, 32, kernel_size=(3,3), padding=1),
-                nn.ReLU(),
-                nn.MaxPool2d((2,2)),
 
-                nn.Conv2d(32, 64, kernel_size=(3,3), padding=1),
+        self.network = nn.Sequential(
+                nn.Conv2d(1, 16, kernel_size=(3,3), padding=1, stride=2),
                 nn.ReLU(),
-                nn.MaxPool2d((2,2)),
+                nn.Conv2d(16, 16, kernel_size=(3,3), padding=1, stride=1),
+                nn.ReLU(),
+                nn.Dropout(0.2),
 
-                nn.Conv2d(64, 128, kernel_size=(3,3), padding=1),
+                nn.Conv2d(16, 32, kernel_size=(3,3), padding=1, stride=2),
                 nn.ReLU(),
+                nn.Conv2d(32, 32, kernel_size=(3,3), padding=1, stride=1),
+                nn.ReLU(),
+                nn.Dropout(0.2),
+
+                nn.Conv2d(32, 64, kernel_size=(3,3), padding=1, stride=2),
+                nn.ReLU(),
+                nn.Conv2d(64, 64, kernel_size=(3,3), padding=1, stride=1),
+                nn.ReLU(),
+                nn.Dropout(0.2),
                 nn.AdaptiveAvgPool2d((1,1))
         )
-        self.classifier = nn.Linear(128, n_classes)
 
+        self.classifier = nn.Sequential(
+                nn.Linear(64, n_classes)
+        )
+    
     def forward(self, x):
-        f = self.features(x)
-        f = f.view(f.size(0), -1)
-        out = self.classifier(f)
+        x = self.network(x)
+        x = torch.flatten(x, 1)
+        out = self.classifier(x)
+
         return out
