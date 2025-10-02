@@ -57,6 +57,7 @@ void setup()
     attachInterrupt(digitalPinToInterrupt(ALR_PIN), interruptCallBack,
                     FALLING); // sets interrupt to ALR_PIN on FALLING edge
 
+    Wire.setClock(100000);
     Wire.begin(); // start I2C comms
 
     mpu.initialize();
@@ -75,86 +76,103 @@ void setup()
                                            // the battery hits the threshold
 
     i2s_init();
+    Serial.println("I2S initialized");
     pinMode(BUTTON_1, INPUT_PULLUP); // for the two switches
     // BUTTON_1 functions: select/deselect item
     pinMode(BUTTON_2, INPUT_PULLUP);
-    // BUTTON_2 functions: toggle rotate/movement, when item is deselected send voice message
-    // BUTTON_1 + BUTTON_2: Screenshot?
+    // BUTTON_2 functions: toggle rotate/movement, when item is deselected send
+    // voice message BUTTON_1 + BUTTON_2: Screenshot?
     pinMode(BUZZER, OUTPUT);
 }
 
 void loop() {
 
-    mqttClient.loop();
+    //mqttClient.loop();
     mpu_loop(mpu);
     unsigned long now = millis();
     static unsigned long button_debounce = 0;
     if (digitalRead(BUTTON_1) == LOW && digitalRead(BUTTON_2) == LOW) {
-        //screenshot 
+        // screenshot
     }
     switch (button_state) {
     case 0:
         // No item selected
         if (digitalRead(BUTTON_1) == LOW && digitalRead(BUTTON_2) == HIGH) {
-              tone(BUZZER, NOTE_D5, NOTE_DURATION); //select an item
-              String message = "SELECT";
-              mqttClient.publish(topic2, message.c_str());
-              //if acknowledge, send another buzz
-              button_state = 1;
-        } else if (digitalRead(BUTTON_2) == LOW && !isRecording) {
+            tone(BUZZER, NOTE_D5, NOTE_DURATION); // select an item
+            String message = "SELECT";
+            //mqttClient.publish(topic2, message.c_str());
+            // if acknowledge, send another buzz
+            Serial.println(message);
+            button_state = 1;
+        } else if (digitalRead(BUTTON_2) == LOW && digitalRead(BUTTON_1 == HIGH)) {
+            size_t total_samples = SAMPLING_RATE;
+            size_t samples_recorded = 0;
             tone(BUZZER, NOTE_C5, NOTE_DURATION); // start recording
-            record_voice();
-            delay(100); // to allow data to be stored properly
-            mqttClient.publish(topic0, "Incoming voice message");
-            for (size_t offset = 0; offset < total_samples;
-                 offset += chunk_size) {
-                char buffer[chunk_size * sizeof(uint16_t)];
-                memcpy(buffer, data, chunk_size * sizeof(uint16_t));
-                int len = min(chunk_size, total_samples - offset);
-                mqttClient.publish(topic0, buffer);
-                delay(10);
+            while (samples_recorded < total_samples) {
+                size_t bytes_read = 0;
+                esp_err_t ret = i2s_read(I2S_NUM_0, data_buffer, sizeof(data_buffer), &bytes_read, 100/portTICK_PERIOD_MS);
+                if (ret == ESP_OK && bytes_read > 0) {
+                    size_t samples = bytes_read / 2; //16-bit samples
+                    for (size_t i = 0; i < samples && samples_recorded < total_samples; i++, samples_recorded++) {
+                        int16_t sample16 = data[i];
+                        Serial.print(sample16);
+                    }
+                }
+                yield();
             }
-            mqttClient.publish(topic0, "Completed sending voice message");
+            delay(100); // to allow data to be stored properly
+            //mqttClient.publish(topic0, "Incoming voice message");
+            // char buffer[SAMPLING_RATE * sizeof(int16_t)];
+            // memcpy(buffer, data, sizeof(buffer));
+            // Serial.println(buffer);
+            //mqttClient.publish(topic0, buffer);
+            //mqttClient.publish(topic0, "Completed sending voice message");
             tone(BUZZER, NOTE_C6, NOTE_DURATION); // completed recording
-          }
+        }
         break;
     case 1:
-            // Item selected
-            static unsigned long last_time = 0;
-            if (now - last_time > DEBOUNCE) { //can deal w the debounce calibration later
-              String message = "";
-              message += "Pitch=%6.2f  Roll=%6.2f  Yaw=%6.2f\n", pitch_deg,
-                  roll_deg, yaw_deg;
-              //figure out how to move objects using this
-              mqttClient.publish(topic2, message.c_str());
-              Serial.print("Sent message: " + message);
-            }
+        // Item selected
+        static unsigned long last_time = 0;
+        if (now - last_time > DEBOUNCE) { // can deal w the debounce calibration later
+            last_time = now;
+            String message = "";
+            message += "Pitch=%6.2f  Roll=%6.2f  Yaw=%6.2f\n", pitch_deg,
+                roll_deg, yaw_deg;
+            message += "AccX=%6.2f  AccY=%6.2f  AccZ=%6.2f", AccX, AccY, AccZ;
+            // figure out how to move objects using this
+            //mqttClient.publish(topic2, message.c_str());
+            Serial.print("Sent message: " + message);
+        }
         if (digitalRead(BUTTON_1) == LOW && digitalRead(BUTTON_2) == HIGH) {
-            //deselect item
-            tone(BUZZER, NOTE_D5, NOTE_DURATION); //select an item
-            String message = "SELECT";
-            mqttClient.publish(topic2, message.c_str());
-            //if acknowledge, send another buzz
+            // deselect item
+            tone(BUZZER, NOTE_D5, NOTE_DURATION); // select an item
+            String message = "DESELECT";
+            Serial.println(message);
+            //mqttClient.publish(topic2, message.c_str());
+            // if acknowledge, send another buzz
             button_state = 0;
-        } else if (digitalRead(BUTTON_2) == LOW && digitalRead(BUTTON_1) == HIGH) {
-          String message = "TOGGLE";
+        } else if (digitalRead(BUTTON_2) == LOW &&
+                   digitalRead(BUTTON_1) == HIGH) {
+            String message = "TOGGLE"; //toggle between rotate and move
         }
         break;
     default:
         break;
     }
-        // Output (rate-limit to keep serial readable)
-        static unsigned long lastMillis = 0;
-        if ((now - lastMillis) > DEBOUNCE) {
-            lastMillis = now;
-            String message = "voltage: ";
-            message += battMonitor.readVoltage();
-            message += "mV\n";
-            message += "percentage: ";
-            message += battMonitor.readPercentage();
-            message += "%\n";
-            dacWrite(DAC_PIN, batt_rounding(battMonitor.readPercentage()));
-        }
+    // Output (rate-limit to keep serial readable)
+    static unsigned long lastMillis = 0;
+    if ((now - lastMillis) > DEBOUNCE) { // only need to update battery
+                                              // percentage once in a while
+        lastMillis = now;
+        String message = "voltage: ";
+        message += battMonitor.readVoltage();
+        message += "mV\n";
+        message += "percentage: ";
+        message += battMonitor.readPercentage();
+        message += "%\n";
+        Serial.println(message);
+        dacWrite(DAC_PIN, batt_rounding(battMonitor.readPercentage()));
+    }
 
   if(intFlag == 1) {
     intFlag = 0;
