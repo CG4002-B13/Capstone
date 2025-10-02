@@ -69,8 +69,7 @@ train_loader = DataLoader(train_data, batch_size=64, shuffle=True, pin_memory=Tr
 test_loader = DataLoader(test_data, batch_size=64, shuffle=False, pin_memory=True)
 
 model = CNN(len(train_data.labels))
-print(len(train_data.labels))
-# model.load_state_dict(torch.load("model.pth", map_location=device))
+model.load_state_dict(torch.load("model.pth", map_location=device))
 model.to(device)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
