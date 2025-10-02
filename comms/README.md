@@ -55,7 +55,7 @@ MQTT_PORT=
 MQTT_USER=
 MQTT_PASS=
 CERT_NAME= # in the format "<name>-"
-MODE= # can be dev or deploy
+CERT_PATH= # Path wrt folder of mqtt_client.py
 ```
 
 ## ESP32
@@ -63,10 +63,13 @@ To allow dynamic importing of certificate files into the ESP32, PlatformIO was u
 
 Required variables in `.env`:
 ```
-WIFI_SSID=
+WIFI_SSID= 
+WIFI_MODE= # Optional, can set to PEAP for school wifi
+WIFI_USER= # Optional, but required if using PEAP
 WIFI_PASS=
 MQTT_USER=
 MQTT_PASS=
+
 
 DEV_MQTT_SERVER=
 DEV_MQTT_PORT=
