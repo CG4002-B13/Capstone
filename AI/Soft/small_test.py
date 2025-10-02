@@ -1,12 +1,11 @@
 from CNN import CNN
-import numpy as np
 import torch
 import os
 import csv
 
 # ---- Config ----
-data_folder = "./data/mel_specs/training"   # folder with .pt files
-model_path = "./model.pth"   # your trained CNN model
+data_folder = "./data/mel_specs/training"
+model_path = "./model.pth"
 csv_input_path = "./mel_inputs.csv"
 csv_logits_path = "./logits.csv"
 num_files = 10
@@ -19,7 +18,7 @@ model.to(device)
 model.eval()
 
 # ---- Collect .pt files ----
-all_files = sorted([f for f in os.listdir(data_folder) if f.endswith(".pt")])
+all_files = [f for f in os.listdir(data_folder) if f.endswith(".pt")]
 files_to_use = all_files[:num_files]
 
 inputs_list = []
@@ -47,7 +46,7 @@ with open("mel_inputs.h", 'w') as f:
         f.write(f"const float {array_name}[{H}][{W}] = {{\n")
         for h in range(H):
             f.write("    {")
-            f.write(", ".join(f"{mel_spec[h, w]:.6f}f" for w in range(W)))
+            f.write(", ".join(f"{mel_spec[h, w]:.6f}" for w in range(W)))
             f.write("}")
             if h != H - 1:
                 f.write(",\n")
@@ -77,4 +76,4 @@ labels_tensor = torch.tensor(labels, dtype=torch.int, device=device)
 correct = 0
 _, predicted = torch.max(logits, dim=1)
 correct += (predicted == labels_tensor).sum().item()
-print(correct, len(set(labels)))
+print(correct, labels)

@@ -38,11 +38,13 @@ class SpeechCommandsDataset(torch.utils.data.Dataset):
                 self.preprocessed_waveforms.append(mel_spec)
                 self.preprocessed_labels.append(self.label_to_idx[label])
 
+                # print(label, self.label_to_idx[label])
+
             # Save spectograms for easier loading
             self.save_mel_specs(subset=subset)
 
         else:
-            self.dataset = sorted([f for f in os.listdir(f"./data/mel_specs/{subset}") if f.endswith(".pt")])
+            self.dataset = [f for f in os.listdir(f"./data/mel_specs/{subset}") if f.endswith(".pt")]
             self.labels = set()
             for entry in self.dataset:
                 sample = torch.load(f"./data/mel_specs/{subset}/{entry}")

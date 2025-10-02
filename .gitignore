@@ -19,3 +19,4 @@ secrets/*.key
 data/
 logits.csv
 model.pth
+mel_inputs.h
