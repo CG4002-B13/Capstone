@@ -1,9 +1,7 @@
 #include "Setup.hpp"
 #include "time.h"
+#include "esp_wpa2.h"
 #include <WiFiClientSecure.h>
-
-const char ssid[] = WIFI_SSID;
-const char pass[] = WIFI_PASS;
 
 const char *ntpServer = "pool.ntp.org";
 const long gmtOffset_sec = 0;
@@ -25,9 +23,24 @@ void setupTime() {
 }
 
 void setupWifi() {
-    Serial.print("Attempting to connect to WPA SSID: ");
-    Serial.println(ssid);
-    WiFi.begin(ssid, pass);
+    if (strcmp(ssid_mode, "PEAP") == 0) {
+        Serial.print("Connecting to WPA2-Enterprise SSID: ");
+        Serial.println(ssid);
+
+        WiFi.disconnect(true);
+        WiFi.mode(WIFI_STA);
+
+        // Set WPA2 Enterprise credentials
+        esp_wifi_sta_wpa2_ent_set_identity((uint8_t *)WIFI_SSID, strlen(WIFI_SSID));
+        esp_wifi_sta_wpa2_ent_set_username((uint8_t *)WIFI_USER, strlen(WIFI_USER));
+        esp_wifi_sta_wpa2_ent_set_password((uint8_t *)WIFI_PASS, strlen(WIFI_PASS));
+        esp_wifi_sta_wpa2_ent_enable();
+        WiFi.begin(ssid);
+    } else {
+        Serial.print("Attempting to connect to WPA SSID: ");
+        Serial.println(ssid);
+        WiFi.begin(ssid, pass);
+    }
     while (WiFi.status() != WL_CONNECTED) {
         Serial.print(".");
         delay(100);
