@@ -100,7 +100,9 @@ void mpu_loop(MPU6050 mpu) {
 uint8_t batt_rounding(float percentage) {
     // convert eg 71.42 -> 70%
     int result = floor(percentage / 10); // floor for conservative estimate
-    return result * 255 / 10;            // scaled to analog output
+    result = result * 255/10;
+    Serial.print(result);
+    return result;            // scaled to analog output
 }
 
 File writeWavHeader(uint32_t sampleRate, uint16_t bitsPerSample,
@@ -142,7 +144,7 @@ void i2s_init() {
         .communication_format = I2S_COMM_FORMAT_STAND_I2S,
         .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
         .dma_buf_count = 4,
-        .dma_buf_len = 1024,
+        .dma_buf_len = 256,
         .use_apll = false,
         .tx_desc_auto_clear = false,
         .fixed_mclk = 0};

@@ -18,7 +18,6 @@ extern uint32_t total_samples;
 extern uint32_t buffer_size;
 extern int16_t data[];
 extern bool isRecording;
-extern const size_t chunk_size;
 
 static const float GYRO_SCALE = 131.0f;  // LSB -> deg/s at ±250 dps
 static const float ACC_SCALE = 16384.0f; // LSB -> g at ±2g
@@ -32,9 +31,9 @@ static int16_t ax, ay, az, gx, gy, gz;
 static float AccX, AccY, AccZ, GyroX, GyroY, GyroZ;
 
 static int intFlag = 0; //interrupt flag
-static constexpr char topic0[] = "esp32/voice_data";
-static constexpr char topic1[] = "esp32/voice_result";
-static constexpr char topic2[] = "esp32/gesture_data";
+static constexpr char topic0[] = "/voice_data";
+static constexpr char topic1[] = "/voice_result";
+static constexpr char topic2[] = "/gestures";
 
 bool is_still(float ax_g, float ay_g, float az_g, float gx_dps, float gy_dps,
               float gz_dps);

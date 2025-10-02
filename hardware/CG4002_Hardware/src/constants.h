@@ -12,14 +12,14 @@
 #endif
 #define LOW_BATTERY 10
 
-#define DAC_PIN 25
-#define BUTTON_1 6
-#define BUTTON_2 7
-#define BUZZER 8
+#define DAC_PIN 25 //D2
+#define BUTTON_1 10 //D6
+#define BUTTON_2 13 //D7
+#define BUZZER 5 //D8
 
-#define MIC_WS 15
-#define MIC_SCK 14
-#define MIC_SD 32
+#define MIC_WS 27 //D4
+#define MIC_SCK 26 //D3
+#define MIC_SD 35 //A3 - READ ONLY
 
 #define SAMPLING_RATE 16000 //Hz
 #define BITS_PER_SAMPLE 16
@@ -30,7 +30,7 @@
 
 //buzzer constants
 #define DEBOUNCE 2000 //constant debouncing of 2 seconds
-#define NOTE_DURATION 250 //note plays for 250ms
+#define NOTE_DURATION 100
 //Music notes
 #define NOTE_B0  31
 #define NOTE_C1  33
