@@ -14,7 +14,7 @@ typedef union {
     unsigned int i;
 } fp_conv;
 
-#define N_CLASSES 35
+#define N_CLASSES 6
 #define IN_H  64
 #define IN_W  81
 #define IN_C   1
@@ -34,10 +34,6 @@ void conv_bn_relu(
     CNN_DTYPE out_fm[H_out][W_out][OUT_CH],
     const CNN_DTYPE w[OUT_CH][IN_CH][K][K],     // Conv weights
     const CNN_DTYPE b[OUT_CH]                 // Conv bias
-    // const float scale[OUT_CH],             // BN gamma
-    // const float shift[OUT_CH],             // BN beta
-    // const float running_mean[OUT_CH],      // BN running mean
-    // const float running_var[OUT_CH]       // BN running variance
 ) {
     for (int oh = 0; oh < H_out; oh++) {
         for (int ow = 0; ow < W_out; ow++) {

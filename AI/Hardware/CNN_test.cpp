@@ -4,7 +4,7 @@
 #include <iostream>
 using namespace std;
 
-#define N_CLASSES 35
+#define N_CLASSES 6
 #define IN_H  64
 #define IN_W  81
 #define IN_C   1
@@ -28,7 +28,7 @@ int main() {
     float sample_input[IN_H][IN_W][IN_C];
     for (int h = 0; h < IN_H; h++) {
         for (int w = 0; w < IN_W; w++) {
-            sample_input[h][w][0] = mel_input_1[h][w];
+            sample_input[h][w][0] = mel_input_0[h][w];
         }
     }
     
