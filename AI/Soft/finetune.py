@@ -1,13 +1,18 @@
 import torch
-from torch.utils.data import DataLoader
+import torch.nn as nn
+from torch.utils.data import DataLoader, random_split
 from CNN import CNN
-from pretrain_dataset import SpeechCommandsDataset
+from finetune_dataset import FinetuneDataset
+
+PRETRAIN_CLASSES = 35
+FINE_TUNED_CLASSES = 6
+EPOCHS = 120
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 
 def train_model():
-    for epoch in range(30):
+    for epoch in range(EPOCHS):
         model.train()
         running_loss = 0.0
 
@@ -26,11 +31,11 @@ def train_model():
 
             # print every 50 batches
             if (batch_idx + 1) % 50 == 0:
-                print(f"Epoch [{epoch+1}/30], Step [{batch_idx+1}/{len(train_loader)}], Loss: {loss.item():.4f}")
+                print(f"Epoch [{epoch+1}/{EPOCHS}], Step [{batch_idx+1}/{len(train_loader)}], Loss: {loss.item():.4f}")
 
         # print epoch average
         avg_loss = running_loss / len(train_loader)
-        print(f"Epoch [{epoch+1}/30] finished → Average Loss: {avg_loss:.4f}")
+        print(f"Epoch [{epoch+1}/{EPOCHS}] finished → Average Loss: {avg_loss:.4f}")
 
 def test_model():
     model.eval()  # set to evaluation mode
@@ -59,20 +64,32 @@ def test_model():
     print(f"Test Loss: {avg_loss:.4f}")
     print(f"Test Accuracy: {accuracy:.2f}%")
 
-train_data = SpeechCommandsDataset(subset="training", load_preprocessed=True)
-test_data = SpeechCommandsDataset(subset="testing", load_preprocessed=True)
-
-train_loader = DataLoader(train_data, batch_size=64, shuffle=True, pin_memory=True)
-test_loader = DataLoader(test_data, batch_size=64, shuffle=False, pin_memory=True)
-
-model = CNN(len(train_data.labels))
+model = CNN(PRETRAIN_CLASSES)
 model.load_state_dict(torch.load("model.pth", map_location=device))
+model.classifier = nn.Sequential(nn.Linear(64, FINE_TUNED_CLASSES))
+for layer in model.classifier:
+    nn.init.xavier_uniform_(layer.weight)
+    nn.init.zeros_(layer.bias)
+
+for param in model.parameters():
+    param.requires_grad = False  # freeze all layers
+
+for param in model.classifier.parameters():  # except the new head
+    param.requires_grad = True
+
 model.to(device)
+
+train_data = FinetuneDataset("data/furniture/labels.csv", "data/furniture/audio/training")
+test_data = FinetuneDataset("data/furniture/labels.csv", "data/furniture/audio/testing")
+
+train_loader = DataLoader(train_data, batch_size=len(train_data), shuffle=True, pin_memory=True)
+test_loader = DataLoader(test_data, batch_size=len(test_data), shuffle=False, pin_memory=True)
+print(len(test_data))
 
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 loss_fn = torch.nn.CrossEntropyLoss()
 
-# train_model()
+train_model()
 test_model()
 
-# torch.save(model.state_dict(), 'model.pth')
+torch.save(model.state_dict(), 'finetune.pth')

@@ -3,13 +3,16 @@ import torch.nn as nn
 import numpy as np
 from CNN import CNN  # your CNN definition
 
+MODEL_NAME = "finetune.pth"
+NUM_CLASSES = 6
+
 def tensor_to_c_array(name, tensor):
     arr = tensor.detach().cpu().numpy()
     dims = "".join(f"[{d}]" for d in arr.shape)
     flat = ", ".join([f"{v}" for v in arr.flatten()])
     return f"static const CNN_DTYPE {name}{dims} = {{ {flat} }};\n"
 
-def export_weights(model_path, header_path, n_classes=10):
+def export_weights(model_path, header_path, n_classes):
     model = CNN(n_classes=n_classes)
     state_dict = torch.load(model_path, map_location="cpu")
     model.load_state_dict(state_dict)
@@ -51,4 +54,4 @@ def export_weights(model_path, header_path, n_classes=10):
     print(f"Exported weights to {header_path}")
 
 if __name__ == "__main__":
-    export_weights("model.pth", "CNN_weights.h", n_classes=35)
+    export_weights(MODEL_NAME, "CNN_weights.h", NUM_CLASSES)
