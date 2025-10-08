@@ -60,19 +60,19 @@ void setup()
     Wire.setClock(100000);
     Wire.begin(); // start I2C comms
 
-    mpu.initialize();
-    Serial.println("MPU6050 connected. Calculating gyro bias...");
-    calibrate_gyro_bias(mpu);
-    Serial.printf("Gyro bias (dps): x=%.3f y=%.3f z=%.3f\n", gyro_bias_x,
-                  gyro_bias_y, gyro_bias_z);
+    // mpu.initialize();
+    // Serial.println("MPU6050 connected. Calculating gyro bias...");
+    // calibrate_gyro_bias(mpu);
+    // Serial.printf("Gyro bias (dps): x=%.3f y=%.3f z=%.3f\n", gyro_bias_x,
+    //               gyro_bias_y, gyro_bias_z);
 
-    while (battMonitor.begin() != 0) {
-        Serial.println("Couldn't connect to MAX17043. Retrying...");
-        delay(2000);
-    }
-    delay(2);
-    Serial.println("Battery monitor successfully connected!");
-    battMonitor.setInterrupt(LOW_BATTERY); // sends an interrupt to warn when
+    // while (battMonitor.begin() != 0) {
+    //     Serial.println("Couldn't connect to MAX17043. Retrying...");
+    //     delay(2000);
+    // }
+    // delay(2);
+    // Serial.println("Battery monitor successfully connected!");
+    // battMonitor.setInterrupt(LOW_BATTERY); // sends an interrupt to warn when
                                            // the battery hits the threshold
 
     i2s_init();
@@ -87,8 +87,8 @@ void setup()
 
 void loop() {
 
-    //mqttClient.loop();
-    mpu_loop(mpu);
+    mqttClient.loop();
+    //mpu_loop(mpu);
     unsigned long now = millis();
     static unsigned long button_debounce = 0;
     if (now - button_debounce > DEBOUNCE) {
@@ -126,7 +126,6 @@ void loop() {
                             Serial.print(sample16);
                         }
                     }
-                    yield();
                 }
                 delay(100); // to allow data to be stored properly
                 mqttClient.publish(topic0, "Incoming voice message");
