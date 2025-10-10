@@ -1,7 +1,15 @@
 import time
+import soundfile as sf
+import numpy as np
 from config import MQTT_HOST, MQTT_PORT, MQTT_USER, MQTT_PASS
 from mqtt_client import SecureMQTTClient
 
+def ai_callback(data):
+    waveform = data.split(",")
+    waveform = waveform[:-1]
+    waveform = np.array(waveform, dtype=np.int16)
+    sf.write("output.wav", waveform, 2000, subtype='PCM_16')
+    print(waveform)
 
 def main():
     mqtt_client = SecureMQTTClient(
@@ -10,14 +18,10 @@ def main():
         host=MQTT_HOST,
         port=MQTT_PORT,
         clientId="ultra96",
+        on_message_callback=ai_callback
     )
     mqtt_client.connect()
     mqtt_client.subscribe(topic="/voice_data")
-    
-    
-    # Convert message to JSON
-    # data = ""
-    # mqtt_client.publish(topic="/voice_result", payload=data)
 
     try:
         while True:
