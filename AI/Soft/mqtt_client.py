@@ -1,12 +1,11 @@
 import time
 import ssl
+import paho.mqtt.client as mqtt
 from config import CERT_NAME, MODE
 from pathlib import Path
-import paho.mqtt.client as mqtt
-
 
 class SecureMQTTClient:
-    def __init__(self, username, password, host="127.0.0.1", port=8883, clientId=None):
+    def __init__(self, username, password, host="127.0.0.1", port=8883, clientId=None, on_message_callback=None):
         self.host = host
         self.port = port
         self.client = mqtt.Client(client_id=clientId)
@@ -20,6 +19,8 @@ class SecureMQTTClient:
         self.client.on_disconnect = self._onDisconnect
 
         self._loadCertificate()
+
+        self.on_message_callback = on_message_callback
 
     def _loadCertificate(self):
         secrets_dir = Path(__file__).resolve().parent / "devices"
@@ -65,8 +66,9 @@ class SecureMQTTClient:
                 delay = min(delay * 2, 30)
 
     def _onMessage(self, client, userdata, msg):
-        print(f"Received message on {msg.topic}: {msg.payload.decode()}")
-        return msg
+        data = msg.payload.decode()
+        print(f"Received message on {msg.topic}: {data}")
+        self.on_message_callback(data)
 
     def isConnected(self):
         return self.client.is_connected()
