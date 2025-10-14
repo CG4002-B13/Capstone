@@ -4,6 +4,7 @@
 #include "constants.h"
 #include "driver/i2s.h"
 #include "math.h"
+#include "SPIFFS.h"
 
 extern float pitch_deg, roll_deg, yaw_deg;
 extern float gyro_bias_x, gyro_bias_y, gyro_bias_z;
@@ -14,9 +15,6 @@ extern unsigned long last_ms;
 extern float yaw_delta_accum;
 extern unsigned long last_gesture_ms;
 
-extern uint32_t total_samples;
-extern uint32_t buffer_size;
-extern int16_t data[];
 extern bool isRecording;
 
 static const float GYRO_SCALE = 131.0f;  // LSB -> deg/s at ±250 dps
@@ -40,7 +38,6 @@ bool is_still(float ax_g, float ay_g, float az_g, float gx_dps, float gy_dps,
 void calibrate_gyro_bias(MPU6050 mpu);
 uint8_t batt_rounding(float percentage);
 void mpu_loop(MPU6050 mpu);
-// File writeWavHeader(int sample_rate, int bits_per_sample, int channels, int
-// data_size);
+void writeWavHeader(File &file);
 void i2s_init();
-void record_voice();
+void check_battery(float percentage);

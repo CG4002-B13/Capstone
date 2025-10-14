@@ -5,14 +5,17 @@
 #define MAX_ADDR 0x36
 
 //MAX17043 constants
-#ifdef __AVR__
-  #define ALR_PIN 2
-#else
-  #define ALR_PIN D2
-#endif
+// #ifdef __AVR__
+//   #define ALR_PIN 2
+// #else
+//   #define ALR_PIN D2
+// #endif
 #define LOW_BATTERY 10
 
-#define DAC_PIN 25 //D2
+#define GREEN_PIN 23
+#define RED_PIN 19
+#define BLUE_PIN 18
+
 #define BUTTON_1 10 //D6
 #define BUTTON_2 13 //D7
 #define BUZZER 5 //D8
@@ -21,7 +24,7 @@
 #define MIC_SCK 26 //D3
 #define MIC_SD 35 //A3 - READ ONLY
 
-#define SAMPLING_RATE 16000 //Hz
+#define SAMPLING_RATE 8000 //Hz
 #define BITS_PER_SAMPLE 16
 #define CHANNELS 1
 #define RECORD_TIME 1 //seconds
