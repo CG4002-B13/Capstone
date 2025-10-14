@@ -9,12 +9,6 @@ unsigned long last_ms;
 float yaw_delta_accum = 0.0f;
 unsigned long last_gesture_ms = 0;
 
-uint32_t total_samples = SAMPLING_RATE * RECORD_TIME;
-uint32_t buffer_size = total_samples * (BITS_PER_SAMPLE / 8);
-int16_t data[SAMPLING_RATE * RECORD_TIME];
-bool isRecording = false;
-const size_t chunk_size = 512;
-
 // ---- Helpers ----
 bool is_still(float ax_g, float ay_g, float az_g, float gx_dps, float gy_dps,
              float gz_dps) {
@@ -97,42 +91,41 @@ void mpu_loop(MPU6050 mpu) {
     }
 }
 
-uint8_t batt_rounding(float percentage) {
-    // convert eg 71.42 -> 70%
-    int result = floor(percentage / 10); // floor for conservative estimate
-    result = result * 255/10;
-    Serial.print(result);
-    return result;            // scaled to analog output
+void check_battery(float perc) {
+    if (perc > 60) {
+        //ledcWrite(0, 210);
+        analogWrite(GREEN_PIN, 210);
+    } else if (perc > 30) {
+        analogWrite(RED_PIN, 150);
+        analogWrite(GREEN_PIN, 60);
+    } else {
+        analogWrite(RED_PIN, 210);
+    }
 }
+void writeWavHeader(File &file) {
+  uint32_t byteRate = SAMPLING_RATE* 2; // 16-bit mono
+  uint32_t blockAlign = 2;
+  uint32_t dataSize = SAMPLING_RATE * RECORD_TIME * 2;
 
-File writeWavHeader(uint32_t sampleRate, uint16_t bitsPerSample,
-                    uint16_t channels, uint32_t dataSize) {
-    File file;
-    uint32_t byteRate = sampleRate * channels * bitsPerSample / 8;
-    uint16_t blockAlign = channels * bitsPerSample / 8;
+  file.write((const uint8_t *)"RIFF", 4);
+  uint32_t fileSize = 36 + dataSize;
+  file.write((uint8_t *)&fileSize, 4);
+  file.write((const uint8_t *)"WAVEfmt ", 8);
 
-    // RIFF header
-    file.write((uint8_t *)"RIFF", 4);
-    uint32_t chunkSize = 36 + dataSize;
-    file.write((byte *)&chunkSize, 4);
-    file.write((uint8_t *)"WAVE", 4);
+  uint32_t subChunk1Size = 16;
+  uint16_t audioFormat = 1;
+  uint16_t numChannels = 1;
+  uint16_t bitsPerSample = 16;
 
-    // fmt subchunk
-    file.write((uint8_t *)"fmt ", 4);
-    uint32_t subChunk1Size = 16;
-    file.write((byte *)&subChunk1Size, 4);
-    uint16_t audioFormat = 1; // PCM
-    file.write((byte *)&audioFormat, 2);
-    file.write((byte *)&channels, 2);
-    file.write((byte *)&sampleRate, 4);
-    file.write((byte *)&byteRate, 4);
-    file.write((byte *)&blockAlign, 2);
-    file.write((byte *)&bitsPerSample, 2);
-
-    // data subchunk
-    file.write((uint8_t *)"data", 4);
-    file.write((byte *)&dataSize, 4);
-    return file;
+  file.write((uint8_t *)&subChunk1Size, 4);
+  file.write((uint8_t *)&audioFormat, 2);
+  file.write((uint8_t *)&numChannels, 2);
+  file.write((uint8_t *)SAMPLING_RATE, 4);
+  file.write((uint8_t *)&byteRate, 4);
+  file.write((uint8_t *)&blockAlign, 2);
+  file.write((uint8_t *)&bitsPerSample, 2);
+  file.write((const uint8_t *)"data", 4);
+  file.write((uint8_t *)&dataSize, 4);
 }
 
 void i2s_init() {
@@ -140,11 +133,11 @@ void i2s_init() {
         .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX),
         .sample_rate = SAMPLING_RATE,
         .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
-        .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
+        .channel_format = I2S_CHANNEL_FMT_ALL_LEFT,
         .communication_format = I2S_COMM_FORMAT_STAND_I2S,
         .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
-        .dma_buf_count = 8,
-        .dma_buf_len = 64,
+        .dma_buf_count = 16,
+        .dma_buf_len = 128,
         .use_apll = false,
         .tx_desc_auto_clear = false,
         .fixed_mclk = 0};
@@ -157,16 +150,4 @@ void i2s_init() {
     i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL);
     i2s_set_pin(I2S_NUM_0, &pin_config);
     i2s_zero_dma_buffer(I2S_NUM_0);
-}
-
-void record_voice() {
-    size_t bytes_read = 0;
-    i2s_read(I2S_NUM_0, (void *)data, sizeof(data), &bytes_read, portMAX_DELAY);
-}
-
-void publish_voice() {
-    int16_t *ptr = &data[0]; // get the starting pointer
-    for (size_t offset = 0; offset < total_samples; offset += chunk_size) {
-
-    }
 }

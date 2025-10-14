@@ -60,20 +60,30 @@ void setup()
     Wire.setClock(100000);
     Wire.begin(); // start I2C comms
 
-    // mpu.initialize();
-    // Serial.println("MPU6050 connected. Calculating gyro bias...");
-    // calibrate_gyro_bias(mpu);
-    // Serial.printf("Gyro bias (dps): x=%.3f y=%.3f z=%.3f\n", gyro_bias_x,
-    //               gyro_bias_y, gyro_bias_z);
+    mpu.initialize();
+    Serial.println("MPU6050 connected. Calculating gyro bias...");
+    calibrate_gyro_bias(mpu);
+    Serial.printf("Gyro bias (dps): x=%.3f y=%.3f z=%.3f\n", gyro_bias_x,
+                  gyro_bias_y, gyro_bias_z);
 
-    // while (battMonitor.begin() != 0) {
-    //     Serial.println("Couldn't connect to MAX17043. Retrying...");
-    //     delay(2000);
-    // }
-    // delay(2);
-    // Serial.println("Battery monitor successfully connected!");
-    // battMonitor.setInterrupt(LOW_BATTERY); // sends an interrupt to warn when
+    while (battMonitor.begin() != 0) {
+        Serial.println("Couldn't connect to MAX17043. Retrying...");
+        delay(2000);
+    }
+    delay(2);
+    Serial.println("Battery monitor successfully connected!");
+    battMonitor.setInterrupt(LOW_BATTERY); // sends an interrupt to warn when
                                            // the battery hits the threshold
+    // ledcSetup(0, 5000, 8);
+    // ledcAttachPin(GREEN_PIN, 0);
+    // ledcSetup(1, 5000, 8);
+    // ledcAttachPin(RED_PIN, 1);
+    // ledcSetup(2, 5000, 8);
+    // ledcAttachPin(BLUE_PIN, 2);
+    pinMode(GREEN_PIN, OUTPUT);
+    pinMode(RED_PIN, OUTPUT);
+    pinMode(BLUE_PIN, OUTPUT);
+    //set up RGB Led pins
 
     i2s_init();
     Serial.println("I2S initialized");
@@ -86,102 +96,120 @@ void setup()
 }
 
 void loop() {
-
     mqttClient.loop();
-    //mpu_loop(mpu);
+    mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+
     unsigned long now = millis();
+    float dt = (now - last_ms) / 1000.0f;
+    if (dt <= 0.0f)
+        dt = 1e-3f;
+    last_ms = now;
+
+    // Convert to physical units
+    AccX = ax / ACC_SCALE;
+    AccY = ay / ACC_SCALE;
+    AccZ = az / ACC_SCALE;
+    GyroX = gx / GYRO_SCALE - gyro_bias_x;
+    GyroY = gy / GYRO_SCALE - gyro_bias_y;
+    GyroZ = gz / GYRO_SCALE - gyro_bias_z;
+
     static unsigned long button_debounce = 0;
-    if (now - button_debounce > DEBOUNCE) {
+    if (now - button_debounce > DEBOUNCE / 5) {
         button_debounce = now;
-        if (digitalRead(BUTTON_1) == LOW && digitalRead(BUTTON_2) == LOW) {
-            String message = "SCREENSHOT";
-            mqttClient.publish(topic2, message.c_str());
-        }
-        switch (button_state) {
-        case 0:
-            // No item selected
-            if (digitalRead(BUTTON_1) == LOW && digitalRead(BUTTON_2) == HIGH) {
-                tone(BUZZER, NOTE_D5, NOTE_DURATION); // select an item
-                String message = "SELECT";
-                // mqttClient.publish(topic2, message.c_str());
-                //  if acknowledge, send another buzz
-                Serial.println(message);
-                button_state = 1;
-            } else if (digitalRead(BUTTON_2) == LOW &&
-                       digitalRead(BUTTON_1 == HIGH)) {
-                size_t total_samples = SAMPLING_RATE;
-                size_t samples_recorded = 0;
-                tone(BUZZER, NOTE_C5, NOTE_DURATION); // start recording
-                while (samples_recorded < total_samples) {
-                    size_t bytes_read = 0;
-                    esp_err_t ret =
-                        i2s_read(I2S_NUM_0, data_buffer, sizeof(data_buffer),
-                                 &bytes_read, 100 / portTICK_PERIOD_MS);
-                    if (ret == ESP_OK && bytes_read > 0) {
-                        size_t samples = bytes_read / 2; // 16-bit samples
-                        for (size_t i = 0;
-                             i < samples && samples_recorded < total_samples;
-                             i++, samples_recorded++) {
-                            int16_t sample16 = data[i];
-                            Serial.print(sample16);
-                        }
-                    }
+        size_t bytes_read = 0;
+        if (digitalRead(BUTTON_2) == LOW) {
+            Serial.println("Button2 Pressed");
+            File file = SPIFFS.open("output.wav", FILE_WRITE);
+            int tries = 0;
+            while (tries < 5) {
+                if (!file) {
+                    Serial.println("Failed to open file. Retrying...");
+                    tries++;
+                    file = SPIFFS.open("output.wav", FILE_WRITE);
+                } else {
+                    tries = 5;
                 }
-                delay(100); // to allow data to be stored properly
-                mqttClient.publish(topic0, "Incoming voice message");
-                char buffer[SAMPLING_RATE * sizeof(int16_t)];
-                memcpy(buffer, data, sizeof(buffer));
-                Serial.println(buffer);
-                mqttClient.publish(topic0, buffer);
-                mqttClient.publish(topic0, "Completed sending voice message");
-                tone(BUZZER, NOTE_C6, NOTE_DURATION); // completed recording
             }
-            break;
-        case 1:
-            // Item selected
-            static unsigned long last_time = 0;
-            if (now - last_time >
-                DEBOUNCE) { // can deal w the debounce calibration later
-                last_time = now;
+            delay(500);
+            int totalSamples = SAMPLING_RATE * RECORD_TIME;
+            writeWavHeader(file);
+            Serial.print("Starting audio recording...");
+            delay(500);
+            int samplesWritten = 0;
+            while (samplesWritten < SAMPLING_RATE * RECORD_TIME) {
+                i2s_read(I2S_NUM_0, &data_buffer, sizeof(data_buffer),
+                                        &bytes_read, portMAX_DELAY);
+                int samples = bytes_read / 2;
+                for (int i = 0; i < samples; i++) {
+                    file.write((uint8_t *)&data_buffer[i], 2);
+                    samplesWritten++;
+                    if (samplesWritten >= totalSamples) break;
+                }
+            }
+            file.close();
+            uint8_t buf[512];
+            File f = SPIFFS.open("output.wav", FILE_READ);
+            if (!f) {
+                tries = 0;
+                while (tries < 5) {
+                    mqttClient.publish(topic0, "Failed to open WAV file. Retrying...\n");
+                    tries++;
+                    f = SPIFFS.open("output.wav", FILE_READ);
+                }
+            }
+            while (f.available()) {
                 String message = "";
-                message += "Pitch=%6.2f  Roll=%6.2f  Yaw=%6.2f\n", pitch_deg,
-                    roll_deg, yaw_deg;
-                message += "AccX=%6.2f  AccY=%6.2f  AccZ=%6.2f", AccX, AccY,
-                    AccZ;
-                // figure out how to move objects using this
-                // mqttClient.publish(topic2, message.c_str());
-                Serial.print("Sent message: " + message);
+                size_t n = f.read(buf, sizeof(buf));
+                message += (char * )buf;
+                if (mqttClient.publish(topic0, message)) {
+                    tone(BUZZER, NOTE_D5, NOTE_DURATION);
+                } else {
+                    tone(BUZZER, NOTE_D2, NOTE_DURATION);
+                }
             }
-            if (digitalRead(BUTTON_1) == LOW && digitalRead(BUTTON_2) == HIGH) {
-                // deselect item
-                tone(BUZZER, NOTE_D5, NOTE_DURATION); // select an item
-                String message = "DESELECT";
-                Serial.println(message);
-                // mqttClient.publish(topic2, message.c_str());
-                //  if acknowledge, send another buzz
-                button_state = 0;
-            } else if (digitalRead(BUTTON_2) == LOW &&
-                       digitalRead(BUTTON_1) == HIGH) {
-                String message = "TOGGLE"; // toggle between rotate and move
+        } else if (digitalRead(BUTTON_1) == LOW) {
+            Serial.print("Button1 Pressed");
+            if (object_state == "move") {
+                object_state = "rotate";
+            } else {
+                object_state = "move";
             }
-            break;
-        default:
-            break;
         }
+
+        //check for voice_data
+
+
+        String packet = "";
+        if ((object_state != "deselect") && object_state.length() > 0) {
+            packet = "type : ";
+            packet += object_state;
+            char sub_packet[60];
+            sprintf(sub_packet, "%6.2f, %6.2f, %6.2f", AccX, AccY, AccZ);
+            packet += ", \n";
+            packet += sub_packet;
+            packet += "\n";
+        }
+
+        if (object_state != "" && object_state != "deselect") {
+            mqttClient.publish(topic2, packet);
+        } 
     }
-    // Output (rate-limit to keep serial readable)
+
     static unsigned long lastMillis = 0;
     if ((now - lastMillis) > DEBOUNCE) { // only need to update battery
                                          // percentage once in a while
         lastMillis = now;
-        String message = "voltage: ";
-        message += battMonitor.readVoltage();
-        message += "mV\n";
-        message += "percentage: ";
-        message += battMonitor.readPercentage();
-        message += "%\n";
-        Serial.println(message);
-        dacWrite(DAC_PIN, batt_rounding(battMonitor.readPercentage()));
+        String batt_message = "voltage: ";
+        float voltage = battMonitor.readVoltage();
+        float percentage = battMonitor.readPercentage();
+        batt_message += voltage;
+        batt_message += "mV\n";
+        batt_message += "percentage: ";
+        batt_message += percentage;
+        batt_message += "%\n";
+        Serial.println(batt_message);
+        check_battery(percentage);
+        // figure out how to move objects using this
     }
 
   if(intFlag == 1) {
