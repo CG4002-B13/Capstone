@@ -3,6 +3,7 @@
 #include <Arduino.h>
 
 MQTTClient* MQTTClient::instance = nullptr;
+std::map<String, std::function<void(const String&)>> MQTTClient::topicCallbacks;
 
 MQTTClient::MQTTClient(WiFiClientSecure& client, CertificateManager& certManager)
     : wifiClient(client), certificateManager(certManager), 
@@ -136,20 +137,41 @@ bool MQTTClient::publishJson(const String& topic, JsonDocument& doc, bool retain
     return publish(topic, jsonMessage, retain);
 }
 
+void MQTTClient::registerCallback(const String& topic, std::function<void(const String& message)> callback) {
+    topicCallbacks[topic] = callback;
+}
+
 void MQTTClient::messageCallback(char* topic, byte* payload, unsigned int length) {
-    Serial.printf("Message received [%s]: ", topic);
-    
-    String message = "";
+    String message;
     for (unsigned int i = 0; i < length; i++) {
         message += (char)payload[i];
     }
-    
-    Serial.println(message);
-    
-    if (String(topic) == MQTT_COMMAND_TOPIC) {
-        handleCommand(message);
+
+    String topicStr = String(topic);
+    Serial.printf("Message received [%s]: %s\n", topic, message.c_str());
+
+    auto it = topicCallbacks.find(topicStr);
+    if (it != topicCallbacks.end()) {
+        it->second(message); 
+    } else {
+        Serial.println("No callback registered for this topic.");
     }
 }
+
+// void MQTTClient::messageCallback(char* topic, byte* payload, unsigned int length) {
+//     Serial.printf("Message received [%s]: ", topic);
+    
+//     String message = "";
+//     for (unsigned int i = 0; i < length; i++) {
+//         message += (char)payload[i];
+//     }
+    
+//     Serial.println(message);
+    
+//     if (String(topic) == MQTT_COMMAND_TOPIC) {
+//         handleCommand(message);
+//     }
+// }
 
 void MQTTClient::handleCommand(const String& command) {
     Serial.println("Processing command: " + command);

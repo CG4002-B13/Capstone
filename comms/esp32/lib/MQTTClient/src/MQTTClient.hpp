@@ -5,6 +5,8 @@
 #include <WiFiClientSecure.h>
 #include "CertificateManager.hpp"
 #include <ArduinoJson.h>
+#include <map>
+#include <functional>
 
 const char MQTT_HOST[] = MQTT_SERVER;
 const char MQTT_PORT_NUMBER[] = MQTT_PORT;
@@ -24,6 +26,7 @@ private:
     PubSubClient mqttClient;
     unsigned long lastReconnectAttempt;
     unsigned long lastMessageTime;
+    static std::map<String, std::function<void(const String&)>> topicCallbacks;
     
     String generateClientId();
     bool loadCertificates();
@@ -41,6 +44,8 @@ public:
     bool subscribe(const String& topic);
     bool publishJson(const String& topic, JsonDocument& doc, bool retain);
     
+    static void messageCallback(char* topic, byte* payload, unsigned int length);
+    void registerCallback(const String& topic, std::function<void(const String& message)> callback);
     static void messageCallback(char* topic, byte* payload, unsigned int length);
     static void handleCommand(const String& command);
     
