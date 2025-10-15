@@ -10,22 +10,22 @@ import (
 
 // Hub manages all websocket clients and sessions
 type Hub struct {
-	sessions     map[string]map[*WSClient]bool
-	userSessions map[string][]*WSClient
-	broadcast    chan types.WebsocketEvent
-	register     chan *WSClient
-	unregister   chan *WSClient
-	mutex        sync.RWMutex
+	sessions      map[string]map[*WSClient]bool
+	sessionMaster map[string]*WSClient
+	broadcast     chan types.WebsocketEvent
+	register      chan *WSClient
+	unregister    chan *WSClient
+	mutex         sync.RWMutex
 }
 
 // Create a new hub
 func NewHub() *Hub {
 	return &Hub{
-		sessions:     make(map[string]map[*WSClient]bool),
-		userSessions: make(map[string][]*WSClient),
-		broadcast:    make(chan types.WebsocketEvent),
-		register:     make(chan *WSClient),
-		unregister:   make(chan *WSClient),
+		sessions:      make(map[string]map[*WSClient]bool),
+		sessionMaster: make(map[string]*WSClient),
+		broadcast:     make(chan types.WebsocketEvent),
+		register:      make(chan *WSClient),
+		unregister:    make(chan *WSClient),
 	}
 }
 
@@ -50,13 +50,18 @@ func (h *Hub) registerClient(client *WSClient) {
 
 	// Make session if session does not exist
 	if h.sessions[client.SessionID] == nil {
-		h.sessions[client.SessionID] = make(map[*WSClient]bool)
+		h.sessions[client.SessionID] = make(map[*WSClient]bool) // Add client to session
+		h.sessionMaster[client.SessionID] = client              // Add client as master
+		client.IsMaster = true
+		log.Printf("(User: %s) is now MASTER of session %s", client.UserID, client.SessionID)
+	} else {
+		client.IsMaster = false
 	}
+
 	h.sessions[client.SessionID][client] = true
 
-	h.userSessions[client.UserID] = append(h.userSessions[client.UserID], client)
-	log.Printf("Client %s (User: %s, CN: %s) joined room %s. Session size: %v",
-		client.ID, client.UserID, client.ClientCN, client.SessionID, len(h.sessions[client.SessionID]),
+	log.Printf("(User: %s, CN: %s) joined room %s. Session size: %v",
+		client.UserID, client.ClientCN, client.SessionID, len(h.sessions[client.SessionID]),
 	)
 }
 
@@ -71,12 +76,20 @@ func (h *Hub) unregisterClient(client *WSClient) {
 			close(client.Send)      // Close send channel of client
 		}
 
-		userClients := h.userSessions[client.UserID]
-		for i, c := range userClients {
-			if c == client {
-				h.userSessions[client.UserID] = append(userClients[:i], userClients[i+1:]...)
-				break
+		if client.IsMaster {
+			log.Printf("MASTER has left session %s. Closing all clientt conenctions.", client.SessionID)
+			for remainingClient := range clients {
+				close(remainingClient.Send) // Close client send channel
+				remainingClient.Conn.Close()
+
+				log.Printf("Closed client user: %s due to master disconnect", remainingClient.UserID)
 			}
+
+			delete(h.sessions, client.SessionID)
+			delete(h.sessionMaster, client.SessionID)
+
+			log.Printf("Session %s terminated due to master disconnect", client.SessionID)
+			return
 		}
 
 		// Clean up empty sessions
@@ -84,11 +97,7 @@ func (h *Hub) unregisterClient(client *WSClient) {
 			delete(h.sessions, client.SessionID)
 		}
 
-		if len(h.userSessions[client.UserID]) == 0 {
-			delete(h.userSessions, client.UserID)
-		}
-
-		log.Printf("Client %s (User: %s) left session %s", client.ID, client.UserID, client.SessionID)
+		log.Printf("User: %s has left session %s", client.UserID, client.SessionID)
 	}
 }
 
@@ -101,12 +110,12 @@ func (h *Hub) broadcastMessage(event types.WebsocketEvent) {
 
 	// Send to all clients
 	if event.UserID == "*" {
-		for _, clients := range h.sessions {
-			for client := range clients {
-				select {
-				case client.Send <- data:
-				default:
-					close(client.Send)
+		for _, client := range h.sessionMaster {
+			select {
+			case client.Send <- data:
+			default:
+				close(client.Send)
+				if clients, ok := h.sessions[client.SessionID]; ok {
 					delete(clients, client)
 				}
 			}
@@ -116,7 +125,7 @@ func (h *Hub) broadcastMessage(event types.WebsocketEvent) {
 
 	if clients, ok := h.sessions[event.SessionID]; ok {
 		for client := range clients {
-			if client.UserID == event.UserID && client.ID == event.SessionID {
+			if client.UserID == event.UserID {
 				continue // dont need to send itself
 			}
 

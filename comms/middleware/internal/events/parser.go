@@ -25,39 +25,21 @@ func HandleCommand(c mqtt.Client, m mqtt.Message) {
 			return
 		}
 
-		log.Printf("[esp32/gesture_data] %s", string(m.Payload()))
+		log.Printf("[esp32/command] %s", string(m.Payload()))
+
+		var data any
+		if len(msg.Axes) > 0 {
+			data = msg.Axes
+		} else {
+			data = nil
+		}
 
 		event := types.WebsocketEvent{
 			EventType: msg.Type.ToEventType(),
 			UserID:    "*", // fill if needed
 			SessionID: "",  // fill correct session
 			Timestamp: time.Now().UnixMilli(),
-			Data:      nil, // the payload
-		}
-
-		// Create and push websocket event
-		if hub != nil {
-			hub.Broadcast(event)
-		}
-	}()
-}
-
-// Reads messages from esp32/gesture_data
-func HandleGesture(c mqtt.Client, m mqtt.Message) {
-	go func() {
-		var msg types.GestureCommand
-		if err := json.Unmarshal(m.Payload(), &msg); err != nil {
-			log.Printf("Failed to unmarshal message: %v", err)
-			return
-		}
-		log.Printf("[esp32/gesture_data] %s", string(m.Payload()))
-
-		event := types.WebsocketEvent{
-			EventType: msg.Type.ToEventType(),
-			UserID:    "*", // fill if needed
-			SessionID: "",  // fill correct session
-			Timestamp: time.Now().UnixMilli(),
-			Data:      msg.Axes, // the payload
+			Data:      data, // the payload
 		}
 
 		// Create and push websocket event

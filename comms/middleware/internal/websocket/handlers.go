@@ -2,7 +2,6 @@ package websocket
 
 import (
 	"crypto/tls"
-	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -79,16 +78,12 @@ func HandleWebsocket(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	if sessionID == "" {
 		sessionID = userID
 	}
-	if deviceID == "" {
-		deviceID = fmt.Sprintf("device_%d", time.Now().UnixNano())
-	}
 
 	if !verified {
 		log.Printf("Rejecting unverified client %s", deviceID)
 	}
 
 	client := &WSClient{
-		ID:        deviceID,
 		UserID:    userID,
 		SessionID: sessionID,
 		Conn:      conn,
