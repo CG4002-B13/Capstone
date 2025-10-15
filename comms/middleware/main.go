@@ -76,7 +76,6 @@ func main() {
 
 	handlers := map[string]mqtt.MessageHandler{
 		"esp32/command":      events.HandleCommand,
-		"esp32/gesture_data": events.HandleGesture,
 		"esp32/voice_result": events.HandleVoiceResult,
 	}
 

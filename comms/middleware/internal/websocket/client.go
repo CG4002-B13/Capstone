@@ -11,13 +11,13 @@ import (
 
 // WSClient represents a connected client
 type WSClient struct {
-	ID        string
 	UserID    string
 	SessionID string
 	Conn      *websocket.Conn
 	Send      chan []byte
 	Hub       *Hub
 	ClientCN  string
+	IsMaster  bool
 }
 
 // Read messages from client and forward to hub
@@ -37,16 +37,16 @@ func (c *WSClient) readPump() {
 		_, message, err := c.Conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("WebSocket error for client %s: %v", c.ID, err)
+				log.Printf("WebSocket error for client %s: %v", c.UserID, err)
 			}
 			break
 		}
 
-		log.Printf("Raw message from client %s: %s", c.ID, string(message))
+		log.Printf("Raw message from client %s: %s", c.UserID, string(message))
 
 		var websocketEvent types.WebsocketEvent
 		if err := json.Unmarshal(message, &websocketEvent); err != nil {
-			log.Printf("Invalid message format from client %s: %v", c.ID, err)
+			log.Printf("Invalid message format from client %s: %v", c.UserID, err)
 			continue
 		}
 
@@ -75,7 +75,7 @@ func (c *WSClient) writePump() {
 				return
 			}
 			if err := c.Conn.WriteMessage(websocket.TextMessage, message); err != nil {
-				log.Printf("Write error for client %s: %v", c.ID, err)
+				log.Printf("Write error for client %s: %v", c.UserID, err)
 				return
 			}
 		case <-ticker.C:
