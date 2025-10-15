@@ -16,17 +16,44 @@ func SetHub(h *websocket.Hub) {
 	hub = h
 }
 
-func HandleGestures(c mqtt.Client, m mqtt.Message) {
+// Reads messages from esp32/command
+func HandleCommand(c mqtt.Client, m mqtt.Message) {
+	go func() {
+		var msg types.Command
+		if err := json.Unmarshal(m.Payload(), &msg); err != nil {
+			log.Printf("Failed to unmarshal message: %v", err)
+			return
+		}
+
+		log.Printf("[esp32/gesture_data] %s", string(m.Payload()))
+
+		event := types.WebsocketEvent{
+			EventType: msg.Type.ToEventType(),
+			UserID:    "*", // fill if needed
+			SessionID: "",  // fill correct session
+			Timestamp: time.Now().UnixMilli(),
+			Data:      nil, // the payload
+		}
+
+		// Create and push websocket event
+		if hub != nil {
+			hub.Broadcast(event)
+		}
+	}()
+}
+
+// Reads messages from esp32/gesture_data
+func HandleGesture(c mqtt.Client, m mqtt.Message) {
 	go func() {
 		var msg types.GestureCommand
 		if err := json.Unmarshal(m.Payload(), &msg); err != nil {
 			log.Printf("Failed to unmarshal message: %v", err)
 			return
 		}
-		log.Printf("[/gestures] %s", string(m.Payload()))
+		log.Printf("[esp32/gesture_data] %s", string(m.Payload()))
 
 		event := types.WebsocketEvent{
-			EventType: types.COMMAND_GESTURE,
+			EventType: msg.Type.ToEventType(),
 			UserID:    "*", // fill if needed
 			SessionID: "",  // fill correct session
 			Timestamp: time.Now().UnixMilli(),
@@ -40,7 +67,7 @@ func HandleGestures(c mqtt.Client, m mqtt.Message) {
 	}()
 }
 
-// HandleVoiceResult processes messages from /voice_result
+// HandleVoiceResult processes messages from ultra96/voice_result
 func HandleVoiceResult(c mqtt.Client, m mqtt.Message) {
 	go func() {
 		var msg types.VoiceCommand
@@ -53,12 +80,12 @@ func HandleVoiceResult(c mqtt.Client, m mqtt.Message) {
 			return
 		}
 
-		log.Printf("[/voice_result] %s", string(m.Payload()))
+		log.Printf("[ultra96/voice_result] %s", string(m.Payload()))
 
 		// Extract Command and Object and attach to data
 		data := msg.Info
 		event := types.WebsocketEvent{
-			EventType: types.COMMAND_SPEECH,
+			EventType: msg.Info.Command.ToEventType(),
 			UserID:    "*", // fill if needed
 			SessionID: "",  // fill correct session
 			Timestamp: time.Now().UnixMilli(),
