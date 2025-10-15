@@ -33,6 +33,7 @@ bool MQTTClient::initialize() {
     
     mqttClient.setServer(MQTT_HOST, atoi(MQTT_PORT_NUMBER));
     mqttClient.setCallback(messageCallback);
+    mqttClient.setBufferSize(BUFFER_SIZE);
     
     randomSeed(esp_random());
     
@@ -125,6 +126,14 @@ bool MQTTClient::subscribe(const String& topic) {
     }
     Serial.println("ERROR: Cannot subscribe - MQTT not connected!");
     return false;
+}
+
+bool MQTTClient::publishJson(const String& topic, JsonDocument& doc, bool retain = false) {
+    char buffer[BUFFER_SIZE];
+    size_t len = serializeJson(doc, buffer, sizeof(buffer));
+    String jsonMessage(buffer, len);
+    
+    return publish(topic, jsonMessage, retain);
 }
 
 void MQTTClient::messageCallback(char* topic, byte* payload, unsigned int length) {
