@@ -9,7 +9,11 @@ WiFiClientSecure wifiClient;
 CertificateManager certificateManager;
 MQTTClient mqttClient(wifiClient, certificateManager);
 
-const char topic[] = "/gestures";
+const char result[] = "esp32/voice_result";
+
+void customCallbackHandler(const String& payload) {
+    Serial.println("Custom handler received command: " + payload);
+}
 
 void setup() {
     // put your setup code here, to run once:
@@ -17,6 +21,7 @@ void setup() {
     setupWifi();
     setupTime();
     mqttClient.initialize();
+    mqttClient.registerCallback(result, customCallbackHandler);
     mqttClient.connect();
 }
 
@@ -29,7 +34,7 @@ void loop() {
     if ((now - lastMsg > 3000) && mqttClient.isConnected()) {
         lastMsg = now;
         String msg = "Hello from ESP32: " + String(now);
-        mqttClient.publish(topic, msg.c_str());
+        mqttClient.publish("esp32/command", msg.c_str());
         Serial.print("Sent message: ");
         Serial.println(msg.c_str());
     }
