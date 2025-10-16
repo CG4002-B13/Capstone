@@ -12,6 +12,8 @@ static String object_state = "";
 
 static unsigned long button_debounce = 0;
 static unsigned long streaming_debounce = 0;
+static unsigned long batt_debounce = 0;
+static bool BLOCK = false;
 
 void interruptCallBack() { intFlag = 1; }
 
@@ -51,10 +53,11 @@ void setup() {
 
     i2sInit();
     Serial.println("I2S initialized");
-    pinMode(BUTTON_1, INPUT_PULLUP); // select voice packet
-    pinMode(BUTTON_2, INPUT_PULLUP); // delete voice packet
-    pinMode(BUTTON_3, INPUT_PULLUP); // start axial movement
-    pinMode(BUTTON_4, INPUT_PULLUP); // start rotary movement
+    pinMode(BUTTON_SELECT, INPUT_PULLUP); // select voice packet
+    pinMode(BUTTON_DELETE, INPUT_PULLUP); // delete voice packet
+    pinMode(BUTTON_MOVE, INPUT_PULLUP); // start axial movement
+    pinMode(BUTTON_ROTATE, INPUT_PULLUP); // start rotary movement
+    pinMode(BUTTON_SCREENSHOT, INPUT_PULLUP); // start screenshot movement
     //Button 1 + 4 == Screenshot
     pinMode(BUZZER, OUTPUT);
 }
@@ -64,16 +67,17 @@ void loop() {
     mpuLoop(mpu);
     JsonDocument doc;
     static unsigned long now = millis();
-    if (now - button_debounce > DEBOUNCE) {
+    if (now - button_debounce > DEBOUNCE && !BLOCK) {
         button_debounce = now;
         size_t bytes_read = 0;
-        if (digitalRead(BUTTON_1) == LOW || digitalRead(BUTTON_2) == LOW) {
+        if (digitalRead(BUTTON_SELECT) == LOW || digitalRead(BUTTON_DELETE) == LOW) {
             Serial.println("Voice Pressed");
+            BLOCK = true;
 
-            if (digitalRead(BUTTON_1 == LOW)) {
-                doc["TYPE"] = "SELECT";
-            } else if (digitalRead(BUTTON_2 == LOW)) {
-                doc["TYPE"] = "DELETE";
+            if (digitalRead(BUTTON_SELECT == LOW)) {
+                doc["type"] = "SELECT";
+            } else if (digitalRead(BUTTON_DELETE == LOW)) {
+                doc["type"] = "DELETE";
             }
             File file = SPIFFS.open("output.wav", FILE_WRITE);
             int tries = 0;
@@ -88,20 +92,27 @@ void loop() {
             }
             delay(500);
             int totalSamples = SAMPLING_RATE * RECORD_TIME;
+            if (file) {
+                analogWrite(BLUE_PIN, 150);
+                delay(250);
+                analogWrite(BLUE_PIN, 0);
+            }
             writeWavHeader(file);
-            Serial.print("Starting audio recording...");
-            delay(500);
+            delay(250);
             int samplesWritten = 0;
             while (samplesWritten < SAMPLING_RATE * RECORD_TIME) {
+                analogWrite(BLUE_PIN, 150);
                 i2s_read(I2S_NUM_0, &data_buffer, sizeof(data_buffer),
                                         &bytes_read, portMAX_DELAY);
-                int samples = bytes_read / 2;
+                int samples = bytes_read / 4;
                 for (int i = 0; i < samples; i++) {
+                    int16_t sample = data_buffer[i] >> 14;
                     file.write((uint8_t *)&data_buffer[i], 2);
                     samplesWritten++;
                     if (samplesWritten >= totalSamples) break;
                 }
             }
+            analogWrite(BLUE_PIN, 255);
             file.close();
             uint8_t buf[512];
             File f = SPIFFS.open("output.wav", FILE_READ);
@@ -122,42 +133,68 @@ void loop() {
                 String message = reinterpret_cast<char*>(base64Voice);
                 if (mqttClient.publish(VOICE_DATA, message)) {
                     tone(BUZZER, NOTE_D5, NOTE_DURATION);
+                    analogWrite(BLUE_PIN, 200);
+                    analogWrite(RED_PIN, 200);
                 } else {
                     tone(BUZZER, NOTE_D2, NOTE_DURATION);
+                    analogWrite(GREEN_PIN, 200);
+                    analogWrite(BLUE_PIN, 200);
                 }
             }
         }
         
-        if (digitalRead(BUTTON_3) == LOW || digitalRead(BUTTON_4) == LOW) {
-            JsonDocument doc;
-            if (digitalRead(BUTTON_3) == LOW) {
+        if (digitalRead(BUTTON_MOVE) == LOW) {
+            if (now - streaming_debounce > STREAMING_DEBOUNCE) {
+                streaming_debounce = now;
+                JsonDocument doc;
                 doc["type"] = "MOVE";
-            } else if (digitalRead(BUTTON_4) == LOW) {
+
+                JsonArray data = doc["axes"].to<JsonArray>();
+                if (AccX > AccY && AccX > AccZ) {
+                    AccY = 0.0;
+                    AccZ = 0.0;
+                } else if (AccY > AccX && AccY > AccZ) {
+                    AccX = 0.0;
+                    AccZ = 0.0;
+                } else if (AccZ > AccX && AccZ > AccY) {
+                    AccX = 0.0;
+                    AccY = 0.0;
+                }
+                data.add(AccX);
+                data.add(AccY);
+                data.add(AccZ);
+                mqttClient.publishJson(COMMAND, doc, true);
+            }
+        } else if (digitalRead(BUTTON_ROTATE) == LOW) {
+            if (now - streaming_debounce > STREAMING_DEBOUNCE) {
+                streaming_debounce = now;
+                JsonDocument doc;
                 doc["type"] = "ROTATE";
-            }
-            JsonArray data = doc["axes"].to<JsonArray>();
-            data.add(AccX);
-            data.add(AccY);
-            data.add(AccZ);
-            }
 
-            mqttClient.publishJson(COMMAND, doc, true);
+                JsonArray data = doc["axes"].to<JsonArray>();
+                if (AccX > AccY && AccX > AccZ) {
+                    AccY = 0.0;
+                    AccZ = 0.0;
+                } else if (AccY > AccX && AccY > AccZ) {
+                    AccX = 0.0;
+                    AccZ = 0.0;
+                } else if (AccZ > AccX && AccZ > AccY) {
+                    AccX = 0.0;
+                    AccY = 0.0;
+                }
+                data.add(AccX);
+                data.add(AccY);
+                data.add(AccZ);
+                mqttClient.publishJson(COMMAND, doc, true);
+            }
         }
-
     }
 
-    if ((now - streaming_debounce) > STREAMING_DEBOUNCE) { // only need to update battery
+    if ((now - batt_debounce) > DEBOUNCE * 20) { // only need to update battery
                                          // percentage once in a while
-        streaming_debounce = now;
-        String batt_message = "voltage: ";
+        batt_debounce = now;
         float voltage = battMonitor.readVoltage();
         float percentage = battMonitor.readPercentage();
-        batt_message += voltage;
-        batt_message += "mV\n";
-        batt_message += "percentage: ";
-        batt_message += percentage;
-        batt_message += "%\n";
-        Serial.println(batt_message);
         checkBattery(percentage);
         // figure out how to move objects using this
     }

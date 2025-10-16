@@ -21,13 +21,14 @@
 #define RED_PIN 19
 #define BLUE_PIN 18
 
-#define BUTTON_1 9 //D5
-#define BUTTON_2 10 //D6
-#define BUTTON_3 13 //D7
-#define BUTTON_4 5 //D8
+#define BUTTON_SCREENSHOT 27 //D4
+#define BUTTON_SELECT 9 //D5
+#define BUTTON_DELETE 10 //D6
+#define BUTTON_MOVE 13 //D7
+#define BUTTON_ROTATE 5 //D8
 #define BUZZER 2 //D9
 
-#define MIC_WS 27 //D4
+#define MIC_WS 25 //D2
 #define MIC_SCK 26 //D3
 #define MIC_SD 35 //A3 - READ ONLY
 
