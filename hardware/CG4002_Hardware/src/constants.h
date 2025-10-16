@@ -4,10 +4,10 @@
 #define MPU_ADDR 0x70
 #define MAX_ADDR 0x36
 
-#define VOICE_DATA "/voice_data"
-#define VOICE_RESULT "/voice_result"
-#define GESTURE_DATA "/gesture_data"
-#define COMMAND "/command"
+#define VOICE_DATA "esp32/voice_data"
+#define VOICE_RESULT "ultra96/voice_result"
+//#define GESTURE_DATA "esp32/gesture_data"
+#define COMMAND "esp32/command"
 
 //MAX17043 constants
 // #ifdef __AVR__
@@ -37,7 +37,7 @@
 #define RECORD_TIME 1 //seconds
 #define HEADER_SIZE 44
 
-#define DEBOUNCE 2000 //constant debouncing of 2 seconds
+#define DEBOUNCE 500 //constant debouncing of 2 seconds
 #define STREAMING_DEBOUNCE 200
 
 //buzzer constants
