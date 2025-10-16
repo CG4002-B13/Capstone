@@ -10,7 +10,7 @@ float yaw_delta_accum = 0.0f;
 unsigned long last_gesture_ms = 0;
 
 // ---- Helpers ----
-bool is_still(float ax_g, float ay_g, float az_g, float gx_dps, float gy_dps,
+bool isStill(float ax_g, float ay_g, float az_g, float gx_dps, float gy_dps,
              float gz_dps) {
     float gnorm = sqrtf(ax_g * ax_g + ay_g * ay_g + az_g * az_g);
     float gyro_mag = sqrtf(gx_dps * gx_dps + gy_dps * gy_dps + gz_dps * gz_dps);
@@ -18,7 +18,7 @@ bool is_still(float ax_g, float ay_g, float az_g, float gx_dps, float gy_dps,
            (gyro_mag < STILL_GYRO_DPS);
 }
 
-void calibrate_gyro_bias(MPU6050 mpu) {
+void calibrateGyroBias(MPU6050 mpu) {
     long sx = 0, sy = 0, sz = 0;
     for (int i = 0; i < BIAS_CAL_SAMPLES; ++i) {
         int16_t ax, ay, az, gx, gy, gz;
@@ -33,7 +33,7 @@ void calibrate_gyro_bias(MPU6050 mpu) {
     gyro_bias_z = (sz / (float)BIAS_CAL_SAMPLES) / GYRO_SCALE;
 }
 
-void mpu_loop(MPU6050 mpu) {
+void mpuLoop(MPU6050 mpu) {
     // Read raw IMU
     mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
 
@@ -80,7 +80,7 @@ void mpu_loop(MPU6050 mpu) {
         yaw_deg += 360;
 
     // Adaptive gyro bias when still (slowly trims residual drift)
-    if (is_still(AccX, AccY, AccZ, GyroX + gyro_bias_x, GyroY + gyro_bias_y,
+    if (isStill(AccX, AccY, AccZ, GyroX + gyro_bias_x, GyroY + gyro_bias_y,
                  GyroZ + gyro_bias_z)) {
         float k = 0.002f; // small adaptation per cycle when still
         gyro_bias_x = (1.0f - k) * gyro_bias_x + k * (gx / GYRO_SCALE);
@@ -91,9 +91,8 @@ void mpu_loop(MPU6050 mpu) {
     }
 }
 
-void check_battery(float perc) {
+void checkBattery(float perc) {
     if (perc > 60) {
-        //ledcWrite(0, 210);
         analogWrite(GREEN_PIN, 210);
     } else if (perc > 30) {
         analogWrite(RED_PIN, 150);
@@ -103,7 +102,7 @@ void check_battery(float perc) {
     }
 }
 void writeWavHeader(File &file) {
-  uint32_t byteRate = SAMPLING_RATE* 2; // 16-bit mono
+  uint32_t byteRate = SAMPLING_RATE * 2; // 16-bit mono
   uint32_t blockAlign = 2;
   uint32_t dataSize = SAMPLING_RATE * RECORD_TIME * 2;
 
@@ -128,7 +127,7 @@ void writeWavHeader(File &file) {
   file.write((uint8_t *)&dataSize, 4);
 }
 
-void i2s_init() {
+void i2sInit() {
     const i2s_config_t i2s_config = {
         .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX),
         .sample_rate = SAMPLING_RATE,
