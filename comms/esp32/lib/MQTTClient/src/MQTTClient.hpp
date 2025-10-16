@@ -46,8 +46,6 @@ public:
     
     static void messageCallback(char* topic, byte* payload, unsigned int length);
     void registerCallback(const String& topic, std::function<void(const String& message)> callback);
-    static void messageCallback(char* topic, byte* payload, unsigned int length);
-    static void handleCommand(const String& command);
     
     static MQTTClient* instance;
 };
