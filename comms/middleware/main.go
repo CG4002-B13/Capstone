@@ -75,8 +75,8 @@ func main() {
 	mqttClient := mqttwrapper.NewMQTTClient("GolangService", env.MQTTHost, env.MQTTPort, env.MQTTUser, env.MQTTPass, mqttTLSConf)
 
 	handlers := map[string]mqtt.MessageHandler{
-		"esp32/command":      events.HandleCommand,
-		"esp32/voice_result": events.HandleVoiceResult,
+		"esp32/command":        events.HandleCommand,
+		"ultra96/voice_result": events.HandleVoiceResult,
 	}
 
 	for topic, handler := range handlers {
