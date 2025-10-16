@@ -1,10 +1,19 @@
 #include "Arduino.h"
+#include "mbedtls/base64.h"
 #include "FS.h"
 #include "MPU6050.h"
 #include "constants.h"
 #include "driver/i2s.h"
 #include "math.h"
 #include "SPIFFS.h"
+#include "Wire.h"
+#include "ArduinoJson.h"
+#include "DFRobot_MAX17043.h"
+#include "CertificateManager.hpp"
+#include "MQTTClient.hpp"
+#include <PubSubClient.h>
+#include <Setup.hpp>
+#include <WiFiClientSecure.h>
 
 extern float pitch_deg, roll_deg, yaw_deg;
 extern float gyro_bias_x, gyro_bias_y, gyro_bias_z;
@@ -29,15 +38,11 @@ static int16_t ax, ay, az, gx, gy, gz;
 static float AccX, AccY, AccZ, GyroX, GyroY, GyroZ;
 
 static int intFlag = 0; //interrupt flag
-static constexpr char topic0[] = "/voice_data";
-static constexpr char topic1[] = "/voice_result";
-static constexpr char topic2[] = "/gestures";
 
-bool is_still(float ax_g, float ay_g, float az_g, float gx_dps, float gy_dps,
+bool isStill(float ax_g, float ay_g, float az_g, float gx_dps, float gy_dps,
               float gz_dps);
-void calibrate_gyro_bias(MPU6050 mpu);
-uint8_t batt_rounding(float percentage);
-void mpu_loop(MPU6050 mpu);
+void calibrateGyroBias(MPU6050 mpu);
+void mpuLoop(MPU6050 mpu);
 void writeWavHeader(File &file);
-void i2s_init();
-void check_battery(float percentage);
+void i2sInit();
+void checkBattery(float percentage);

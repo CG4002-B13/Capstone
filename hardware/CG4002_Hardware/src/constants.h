@@ -4,6 +4,11 @@
 #define MPU_ADDR 0x70
 #define MAX_ADDR 0x36
 
+#define VOICE_DATA "/voice_data"
+#define VOICE_RESULT "/voice_result"
+#define GESTURE_DATA "/gesture_data"
+#define COMMAND "/command"
+
 //MAX17043 constants
 // #ifdef __AVR__
 //   #define ALR_PIN 2
@@ -16,9 +21,11 @@
 #define RED_PIN 19
 #define BLUE_PIN 18
 
-#define BUTTON_1 10 //D6
-#define BUTTON_2 13 //D7
-#define BUZZER 5 //D8
+#define BUTTON_1 9 //D5
+#define BUTTON_2 10 //D6
+#define BUTTON_3 13 //D7
+#define BUTTON_4 5 //D8
+#define BUZZER 2 //D9
 
 #define MIC_WS 27 //D4
 #define MIC_SCK 26 //D3
@@ -30,9 +37,10 @@
 #define RECORD_TIME 1 //seconds
 #define HEADER_SIZE 44
 
+#define DEBOUNCE 2000 //constant debouncing of 2 seconds
+#define STREAMING_DEBOUNCE 200
 
 //buzzer constants
-#define DEBOUNCE 2000 //constant debouncing of 2 seconds
 #define NOTE_DURATION 100
 //Music notes
 #define NOTE_B0  31
