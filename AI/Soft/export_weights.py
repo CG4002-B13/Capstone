@@ -4,7 +4,7 @@ import numpy as np
 from CNN import CNN  # your CNN definition
 
 MODEL_NAME = "finetune.pth"
-NUM_CLASSES = 6
+NUM_CLASSES = 12
 
 def tensor_to_c_array(name, tensor):
     arr = tensor.detach().cpu().numpy()

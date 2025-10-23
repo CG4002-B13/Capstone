@@ -1,6 +1,7 @@
 import time
 import soundfile as sf
 import numpy as np
+import json
 from config import MQTT_HOST, MQTT_PORT, MQTT_USER, MQTT_PASS
 from mqtt_client import SecureMQTTClient
 
@@ -21,7 +22,12 @@ def main():
         on_message_callback=ai_callback
     )
     mqtt_client.connect()
-    mqtt_client.subscribe(topic="/voice_data")
+    mqtt_client.subscribe(topic="esp32/voice_data")
+
+    data = {"status": "SUCCESS", "info": {"command": "SELECT", "object": "TABLE"}}
+    json_data = json.dumps(data)
+
+    mqtt_client.publish("ultra96/voice_result", json_data)
 
     try:
         while True:

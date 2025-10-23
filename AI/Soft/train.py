@@ -3,11 +3,13 @@ from torch.utils.data import DataLoader
 from CNN import CNN
 from pretrain_dataset import SpeechCommandsDataset
 
+EPOCHS = 20
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 
 def train_model():
-    for epoch in range(30):
+    for epoch in range(EPOCHS):
         model.train()
         running_loss = 0.0
 
@@ -24,13 +26,15 @@ def train_model():
             # accumulate loss
             running_loss += loss.item()
 
-            # print every 50 batches
-            if (batch_idx + 1) % 50 == 0:
-                print(f"Epoch [{epoch+1}/30], Step [{batch_idx+1}/{len(train_loader)}], Loss: {loss.item():.4f}")
+            # # print every 50 batches
+            # if (batch_idx + 1) % 50 == 0:
+            #     print(f"Epoch [{epoch+1}/30], Step [{batch_idx+1}/{len(train_loader)}], Loss: {loss.item():.4f}")
 
         # print epoch average
         avg_loss = running_loss / len(train_loader)
-        print(f"Epoch [{epoch+1}/30] finished → Average Loss: {avg_loss:.4f}")
+        print(f"Epoch [{epoch+1}/{EPOCHS}] finished → Average Loss: {avg_loss:.4f}")
+
+        test_model()
 
 def test_model():
     model.eval()  # set to evaluation mode
@@ -66,13 +70,13 @@ train_loader = DataLoader(train_data, batch_size=64, shuffle=True, pin_memory=Tr
 test_loader = DataLoader(test_data, batch_size=64, shuffle=False, pin_memory=True)
 
 model = CNN(len(train_data.labels))
-model.load_state_dict(torch.load("model.pth", map_location=device))
+# model.load_state_dict(torch.load("model.pth", map_location=device))
 model.to(device)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 loss_fn = torch.nn.CrossEntropyLoss()
 
-# train_model()
+train_model()
 test_model()
 
-# torch.save(model.state_dict(), 'model.pth')
+torch.save(model.state_dict(), 'model.pth')
