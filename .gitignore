@@ -17,6 +17,7 @@ secrets/*.key
 **/*.pem
 
 data/
+temp_wavs/
 logits.csv
 model.pth
 finetune.pth
