@@ -34,3 +34,4 @@ services:
       - ./secrets:/secrets:ro
     depends_on:
       - mqtt-broker
+    network_mode: "host"
