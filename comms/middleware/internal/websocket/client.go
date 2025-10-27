@@ -3,9 +3,10 @@ package websocket
 import (
 	"encoding/json"
 	"log"
+	"strings"
 	"time"
 
-	"github.com/ParthGandhiNUS/CG4002/internal/events/types"
+	"github.com/ParthGandhiNUS/CG4002/internal/types"
 	"github.com/gorilla/websocket"
 )
 
@@ -50,8 +51,12 @@ func (c *WSClient) readPump() {
 			continue
 		}
 
-		websocketEvent.UserID = c.UserID
-		websocketEvent.SessionID = c.SessionID
+		if websocketEvent.EventType.IsS3Event() {
+			HandleS3Request(c, &websocketEvent)
+		}
+
+		websocketEvent.UserID = strings.ToLower(c.UserID)
+		websocketEvent.SessionID = strings.ToLower(c.SessionID)
 		websocketEvent.Timestamp = time.Now().UnixMilli()
 
 		c.Hub.broadcast <- websocketEvent

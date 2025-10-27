@@ -5,8 +5,10 @@ import (
 	"log"
 	"sync"
 
-	"github.com/ParthGandhiNUS/CG4002/internal/events/types"
+	"github.com/ParthGandhiNUS/CG4002/internal/types"
 )
+
+var hub *Hub
 
 // Hub manages all websocket clients and sessions
 type Hub struct {
@@ -20,13 +22,14 @@ type Hub struct {
 
 // Create a new hub
 func NewHub() *Hub {
-	return &Hub{
+	hub = &Hub{
 		sessions:      make(map[string]map[*WSClient]bool),
 		sessionMaster: make(map[string]*WSClient),
 		broadcast:     make(chan types.WebsocketEvent),
 		register:      make(chan *WSClient),
 		unregister:    make(chan *WSClient),
 	}
+	return hub
 }
 
 // Run the hub to process register/unregister/broadcast events

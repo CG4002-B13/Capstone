@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/ParthGandhiNUS/CG4002/internal/auth"
@@ -67,20 +68,21 @@ func HandleWebsocket(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		log.Printf("No client certificate provided")
 	}
 
-	userID := r.URL.Query().Get("userId")
-	sessionID := r.URL.Query().Get("sessionId")
-	deviceID := r.URL.Query().Get("deviceId")
+	userID := strings.ToLower(r.URL.Query().Get("userId"))
+	sessionID := strings.ToLower(r.URL.Query().Get("sessionId"))
+
 	if userID == "" {
 		log.Printf("Missing userId parameter")
 		conn.Close()
 		return
 	}
+
 	if sessionID == "" {
 		sessionID = userID
 	}
 
 	if !verified {
-		log.Printf("Rejecting unverified client %s", deviceID)
+		log.Printf("Rejecting unverified client %s", userID)
 	}
 
 	client := &WSClient{

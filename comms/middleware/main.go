@@ -5,10 +5,10 @@ import (
 	"net/http"
 
 	"github.com/ParthGandhiNUS/CG4002/config"
-	"github.com/ParthGandhiNUS/CG4002/internal/events"
-	"github.com/ParthGandhiNUS/CG4002/internal/mqttwrapper"
+	"github.com/ParthGandhiNUS/CG4002/internal/mqtt"
+	"github.com/ParthGandhiNUS/CG4002/internal/s3"
 	"github.com/ParthGandhiNUS/CG4002/internal/websocket"
-	mqtt "github.com/eclipse/paho.mqtt.golang"
+	pahomqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
 func main() {
@@ -20,7 +20,7 @@ func main() {
 		ServerKeyFile:  env.ServerKeyLocation,
 	}
 
-	mqttTLSConfig := mqttwrapper.MQTTTLSConfig{
+	mqttTLSConfig := mqtt.MQTTTLSConfig{
 		CACertFile:     env.CACertLocation,
 		ClientCertFile: env.ClientCertLocation,
 		ClientKeyFile:  env.ClientKeyLocation,
@@ -31,14 +31,17 @@ func main() {
 		log.Fatal("Failed to setup TLS:", err)
 	}
 
-	mqttTLSConf, err := mqttwrapper.SetupMQTTTLS(mqttTLSConfig)
+	mqttTLSConf, err := mqtt.SetupMQTTTLS(mqttTLSConfig)
 	if err != nil {
 		log.Fatal("Failed to authenticate with MQTT Broker: ", err)
 	}
 
 	hub := websocket.NewHub()
+	s3Service, err := s3.NewS3Service("capstone-cg4002grp13")
+
 	go hub.Run()
-	events.SetHub(hub)
+	mqtt.SetHub(hub)
+	websocket.SetS3Service(s3Service)
 
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		websocket.HandleWebsocket(hub, w, r)
@@ -72,11 +75,11 @@ func main() {
 		}
 	}()
 
-	mqttClient := mqttwrapper.NewMQTTClient("GolangService", env.MQTTHost, env.MQTTPort, env.MQTTUser, env.MQTTPass, mqttTLSConf)
+	mqttClient := mqtt.NewMQTTClient("GolangService", env.MQTTHost, env.MQTTPort, env.MQTTUser, env.MQTTPass, mqttTLSConf)
 
-	handlers := map[string]mqtt.MessageHandler{
-		"esp32/command":        events.HandleCommand,
-		"ultra96/voice_result": events.HandleVoiceResult,
+	handlers := map[string]pahomqtt.MessageHandler{
+		"esp32/command":        mqtt.HandleCommand,
+		"ultra96/voice_result": mqtt.HandleVoiceResult,
 	}
 
 	for topic, handler := range handlers {

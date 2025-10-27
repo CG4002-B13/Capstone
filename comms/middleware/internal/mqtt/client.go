@@ -1,4 +1,4 @@
-package mqttwrapper
+package mqtt
 
 import (
 	"crypto/tls"
