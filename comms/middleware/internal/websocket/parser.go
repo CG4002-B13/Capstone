@@ -18,16 +18,27 @@ func SetS3Service(s3 *s3.S3Service) {
 }
 
 func HandleS3Request(client *WSClient, event *types.WebsocketEvent) {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 
 	switch event.EventType {
 	case types.S3_UPLOAD_REQUEST:
-		handleUploadURLRequest(ctx, client, event)
+		go func() {
+			defer cancel()
+			handleUploadURLRequest(ctx, client, event)
+		}()
 	case types.S3_SYNC_REQUEST:
-		handleSyncRequest(ctx, client, event)
+		go func() {
+			defer cancel()
+			handleSyncRequest(ctx, client, event)
+		}()
 	case types.S3_DELETE_REQUEST:
-		handleDeleteRequest(ctx, client, event)
+		go func() {
+			defer cancel()
+			handleDeleteRequest(ctx, client, event)
+		}()
 	default:
+		cancel()
+		log.Printf("Unknown S3 Event Type: %s", event.EventType)
 		sendS3Error(client, event, "Invalid S3 Request Sent")
 	}
 }
@@ -37,6 +48,12 @@ func handleUploadURLRequest(ctx context.Context, client *WSClient, event *types.
 		ctx,
 		fmt.Sprintf("%s/%d", event.SessionID, int(event.Timestamp)),
 	)
+
+	if ctx.Err() == context.DeadlineExceeded {
+		log.Printf("Request timed out: %v", err)
+		sendS3Error(client, event, "Request timed out")
+		return
+	}
 
 	if err != nil {
 		log.Println(err)
@@ -56,6 +73,12 @@ func handleUploadURLRequest(ctx context.Context, client *WSClient, event *types.
 
 func handleSyncRequest(ctx context.Context, client *WSClient, event *types.WebsocketEvent) {
 	s3List, err := s3Service.ListUserImages(ctx, event.SessionID)
+
+	if ctx.Err() == context.DeadlineExceeded {
+		log.Printf("Request timed out: %v", err)
+		sendS3Error(client, event, "Request timed out")
+		return
+	}
 
 	if err != nil {
 		log.Println(err)
@@ -114,6 +137,12 @@ func handleSyncRequest(ctx context.Context, client *WSClient, event *types.Webso
 func handleDeleteRequest(ctx context.Context, client *WSClient, event *types.WebsocketEvent) {
 	url, err := s3Service.GeneratePresignedDeleteURL(ctx, event.Data.(string))
 
+	if ctx.Err() == context.DeadlineExceeded {
+		log.Printf("Request timed out: %v", err)
+		sendS3Error(client, event, "Request timed out")
+		return
+	}
+
 	if err != nil {
 		log.Println(err)
 		sendS3Error(client, event, err.Error())
@@ -147,5 +176,10 @@ func sendS3Response(client *WSClient, response *types.WebsocketEvent) {
 		log.Printf("Failed to marshal response: %v", err)
 		return
 	}
-	client.Send <- data
+
+	select {
+	case client.Send <- data:
+	case <-time.After(5 * time.Second):
+		log.Printf("Failed to send response - client send channel timeout")
+	}
 }
