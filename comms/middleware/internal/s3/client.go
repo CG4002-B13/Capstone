@@ -20,6 +20,9 @@ func NewS3Service(bucket string) (*S3Service, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to load AWS SDK Config, %w", err)
 	}
+
+	fmt.Printf("AWS config successfully loaded: %+v\n", cfg)
+
 	s3Client := s3.NewFromConfig(cfg)
 	presigner := s3.NewPresignClient(s3Client)
 

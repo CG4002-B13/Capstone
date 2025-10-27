@@ -3,6 +3,7 @@ package s3
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -69,7 +70,8 @@ func (s *S3Service) ListUserImages(ctx context.Context, userName string) ([]stri
 		}
 
 		for _, obj := range page.Contents {
-			allKeys = append(allKeys, *obj.Key)
+			key := strings.ReplaceAll(*obj.Key, "⁄", "/")
+			allKeys = append(allKeys, key)
 		}
 	}
 
