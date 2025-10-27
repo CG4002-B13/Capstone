@@ -3,6 +3,7 @@ package s3
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -21,7 +22,12 @@ func NewS3Service(bucket string) (*S3Service, error) {
 		return nil, fmt.Errorf("unable to load AWS SDK Config, %w", err)
 	}
 
-	fmt.Printf("AWS config successfully loaded: %+v\n", cfg)
+	creds, err := cfg.Credentials.Retrieve(context.TODO())
+	if err != nil {
+		log.Fatal("Failed to retrieve credentials:", err)
+	}
+
+	fmt.Printf("Loaded credentials from %s\n", creds.Source)
 
 	s3Client := s3.NewFromConfig(cfg)
 	presigner := s3.NewPresignClient(s3Client)
