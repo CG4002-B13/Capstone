@@ -7,13 +7,12 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 const EXPIRE_TIME time.Duration = 5 * time.Minute
 
-func (s *S3Service) GeneratePresignedUploadURL(ctx context.Context, username string, fileNumber int) (string, error) {
-	key := fmt.Sprintf("%s/%d.%s", username, fileNumber, "jpg")
+func (s *S3Service) GeneratePresignedUploadURL(ctx context.Context, fileName string) (string, error) {
+	key := fmt.Sprintf("%s.%s", fileName, "jpg")
 
 	params := &s3.PutObjectInput{
 		Bucket: aws.String(s.bucketName),
@@ -22,7 +21,6 @@ func (s *S3Service) GeneratePresignedUploadURL(ctx context.Context, username str
 
 	presignedReq, err := s.presigner.PresignPutObject(ctx, params, s3.WithPresignExpires(EXPIRE_TIME))
 	if err != nil {
-		// <add send error packet to client here>
 		return "", fmt.Errorf("failed to presign put object request: %w", err)
 	}
 
@@ -37,7 +35,6 @@ func (s *S3Service) GeneratePresignedDownloadURL(ctx context.Context, key string
 
 	presignedReq, err := s.presigner.PresignGetObject(ctx, params, s3.WithPresignExpires(EXPIRE_TIME))
 	if err != nil {
-		// <add send error packet to client here>
 		return "", fmt.Errorf("failed to presign get object request: %w", err)
 	}
 	return presignedReq.URL, nil
@@ -51,28 +48,58 @@ func (s *S3Service) GeneratePresignedDeleteURL(ctx context.Context, key string) 
 
 	presignedReq, err := s.presigner.PresignDeleteObject(ctx, params, s3.WithPresignExpires(EXPIRE_TIME))
 	if err != nil {
-		// <add send error packet to client here>
 		return "", fmt.Errorf("failed to presign get object request: %w", err)
 	}
 	return presignedReq.URL, nil
 }
 
-func (s *S3Service) ListUserImages(ctx context.Context, fileName string) ([]types.Object, error) {
-	prefix := fmt.Sprintf("%s/", fileName)
+func (s *S3Service) ListUserImages(ctx context.Context, userName string) ([]string, error) {
 	input := &s3.ListObjectsV2Input{
 		Bucket: aws.String(s.bucketName),
-		Prefix: aws.String(prefix),
+		Prefix: aws.String(userName),
 	}
 
-	var allObjects []types.Object
+	var allKeys []string
 	paginator := s3.NewListObjectsV2Paginator(s.client, input)
+
 	for paginator.HasMorePages() {
 		page, err := paginator.NextPage(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get page of objects: %w", err)
+			return nil, fmt.Errorf("failed to get page of objects from s3: %w", err)
 		}
-		allObjects = append(allObjects, page.Contents...)
+
+		for _, obj := range page.Contents {
+			allKeys = append(allKeys, *obj.Key)
+		}
 	}
 
-	return allObjects, nil
+	return allKeys, nil
+}
+
+func (s *S3Service) CompareWithS3(localFiles, s3Files []string) ([]string, []string) {
+	s3Set := make(map[string]struct{})
+	for _, key := range s3Files {
+		s3Set[key] = struct{}{}
+	}
+
+	localSet := make(map[string]struct{})
+	for _, key := range localFiles {
+		localSet[key] = struct{}{}
+	}
+
+	var missingInS3, missingOnLocal []string
+
+	for _, file := range localFiles {
+		if _, found := s3Set[file]; !found {
+			missingInS3 = append(missingInS3, file)
+		}
+	}
+
+	for _, file := range s3Files {
+		if _, found := localSet[file]; !found {
+			missingOnLocal = append(missingOnLocal, file)
+		}
+	}
+
+	return missingInS3, missingOnLocal
 }
