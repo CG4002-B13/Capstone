@@ -67,7 +67,7 @@ func HandleVoiceResult(c mqtt.Client, m mqtt.Message) {
 		// Extract Command and Object and attach to data
 		data := msg.Info
 		event := types.WebsocketEvent{
-			EventType: msg.Info.Command.ToEventType(),
+			EventType: types.COMMAND_SPEECH,
 			UserID:    "*", // fill if needed
 			SessionID: "",  // fill correct session
 			Timestamp: time.Now().UnixMilli(),
