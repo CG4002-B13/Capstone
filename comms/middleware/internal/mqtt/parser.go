@@ -62,12 +62,20 @@ func HandleVoiceResult(c mqtt.Client, m mqtt.Message) {
 			return
 		}
 
+		var eventType types.EventType
+		data := msg.Info
+		switch data.Result {
+		case types.ODM, types.UP, types.DOWN:
+			eventType = types.COMMAND_SET
+		default:
+			eventType = msg.Info.Command.ToEventType()
+		}
+
 		log.Printf("[ultra96/voice_result] %s", string(m.Payload()))
 
 		// Extract Command and Object and attach to data
-		data := msg.Info
 		event := types.WebsocketEvent{
-			EventType: types.COMMAND_SPEECH,
+			EventType: eventType,
 			UserID:    "*", // fill if needed
 			SessionID: "",  // fill correct session
 			Timestamp: time.Now().UnixMilli(),
