@@ -129,12 +129,23 @@ bool MQTTClient::subscribe(const String& topic) {
     return false;
 }
 
-bool MQTTClient::publishJson(const String& topic, JsonDocument& doc, bool retain = false) {
+bool MQTTClient::publishBinary(const String& topic, const uint8_t* data, size_t size) {
     char buffer[BUFFER_SIZE];
-    size_t len = serializeJson(doc, buffer, sizeof(buffer));
-    String jsonMessage(buffer, len);
-    
-    return publish(topic, jsonMessage, retain);
+    if (mqttClient.connected()) {
+        bool result = mqttClient.publish(topic.c_str(), data, size, false);
+        if (result) {
+            Serial.print("Published binary to ");
+            Serial.print(topic);
+            Serial.print(" (");
+            Serial.print(sizeof(data));
+            Serial.println(" bytes)");
+        } else {
+            Serial.println("ERROR: Failed to publish to " + topic);
+        }
+        return result;
+    }
+    Serial.println("ERROR: Cannot publish - MQTT not connected!");
+    return false;
 }
 
 void MQTTClient::registerCallback(const String& topic, std::function<void(const String& message)> callback) {

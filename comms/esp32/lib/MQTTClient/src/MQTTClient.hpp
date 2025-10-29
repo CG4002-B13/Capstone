@@ -4,7 +4,6 @@
 #include <PubSubClient.h>
 #include <WiFiClientSecure.h>
 #include "CertificateManager.hpp"
-#include <ArduinoJson.h>
 #include <map>
 #include <functional>
 
@@ -17,7 +16,7 @@ const char MQTT_COMMAND_TOPIC[] = "esp32/command";
 
 const unsigned long MQTT_RECONNECT_DELAY = 5000;
 const unsigned long MESSAGE_PUBLISH_INTERVAL = 3000;
-const uint16_t BUFFER_SIZE = 8192;
+const uint16_t BUFFER_SIZE = 65535;
 
 class MQTTClient {
 private:
@@ -42,7 +41,7 @@ public:
     void publishStatus(const String& status);
     bool publish(const String& topic, const String& message, bool retain = false);
     bool subscribe(const String& topic);
-    bool publishJson(const String& topic, JsonDocument& doc, bool retain);
+    bool publishBinary(const String& topic, const uint8_t* data, size_t size);
     
     static void messageCallback(char* topic, byte* payload, unsigned int length);
     void registerCallback(const String& topic, std::function<void(const String& message)> callback);
