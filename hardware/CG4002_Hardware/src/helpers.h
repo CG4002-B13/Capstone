@@ -1,5 +1,4 @@
 #include "Arduino.h"
-#include "mbedtls/base64.h"
 #include "FS.h"
 #include "MPU6050.h"
 #include "constants.h"
@@ -7,7 +6,6 @@
 #include "math.h"
 #include "SPIFFS.h"
 #include "Wire.h"
-#include "ArduinoJson.h"
 #include "DFRobot_MAX17043.h"
 #include "CertificateManager.hpp"
 #include "MQTTClient.hpp"
@@ -24,7 +22,8 @@ extern unsigned long last_ms;
 extern float yaw_delta_accum;
 extern unsigned long last_gesture_ms;
 
-extern bool isRecording;
+extern volatile bool recording;
+extern volatile bool ledOn;
 
 static const float GYRO_SCALE = 131.0f;  // LSB -> deg/s at ±250 dps
 static const float ACC_SCALE = 16384.0f; // LSB -> g at ±2g
@@ -44,5 +43,12 @@ bool isStill(float ax_g, float ay_g, float az_g, float gx_dps, float gy_dps,
 void calibrateGyroBias(MPU6050 mpu);
 void mpuLoop(MPU6050 mpu);
 void writeWavHeader(File &file);
+void LedTask(void *parameter);
+void batteryTask(void *parameter);
 void i2sInit();
-void checkBattery(float percentage);
+
+WiFiClientSecure wifiClient;
+CertificateManager certificateManager;
+MQTTClient mqttClient(wifiClient, certificateManager);
+DFRobot_MAX17043 battMonitor;
+MPU6050 mpu;

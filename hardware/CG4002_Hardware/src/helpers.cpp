@@ -91,15 +91,24 @@ void mpuLoop(MPU6050 mpu) {
     }
 }
 
-void checkBattery(float perc) {
-    if (perc > 70) {
-        analogWrite(GREEN_PIN, 210);
-    } else if (perc > 40) {
-        analogWrite(RED_PIN, 150);
-        analogWrite(GREEN_PIN, 60);
+void batteryTask(void *parameter) {
+    float perc = battMonitor.readPercentage();
+    if (perc > 70.0) {
+        analogWrite(GREEN_PIN, 100);
+        delay(50);
+        analogWrite(GREEN_PIN, 0);
+    } else if (perc > 40.0) {
+        analogWrite(RED_PIN, 100);
+        analogWrite(GREEN_PIN, 40);
+        delay(50);
+        analogWrite(RED_PIN, 0);
+        analogWrite(GREEN_PIN, 0);
     } else {
-        analogWrite(RED_PIN, 210);
+        analogWrite(RED_PIN, 100);
+        delay(50);
+        analogWrite(RED_PIN, 0);
     }
+    vTaskDelay(pdMS_TO_TICKS(2000));
 }
 void writeWavHeader(File &file) {
   uint32_t byteRate = SAMPLING_RATE * 2; // 16-bit mono
@@ -127,15 +136,28 @@ void writeWavHeader(File &file) {
   file.write((uint8_t *)&dataSize, 4);
 }
 
+void LedTask(void *parameter) {
+    while (1) {
+        if (recording && !ledOn) {
+            analogWrite(BLUE_PIN, 100);
+            ledOn = true;
+        } else if (!recording) {
+            analogWrite(BLUE_PIN, 0);
+            ledOn = false;
+        }
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+}
+
 void i2sInit() {
     const i2s_config_t i2s_config = {
         .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX),
         .sample_rate = SAMPLING_RATE,
         .bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT,
-        .channel_format = I2S_CHANNEL_FMT_ALL_LEFT,
+        .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
         .communication_format = I2S_COMM_FORMAT_STAND_I2S,
         .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
-        .dma_buf_count = 16,
+        .dma_buf_count = 8,
         .dma_buf_len = 128,
         .use_apll = false,
         .tx_desc_auto_clear = false,
