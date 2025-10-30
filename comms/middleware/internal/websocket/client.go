@@ -57,7 +57,6 @@ func (c *WSClient) readPump() {
 
 		websocketEvent.UserID = strings.ToLower(c.UserID)
 		websocketEvent.SessionID = strings.ToLower(c.SessionID)
-		websocketEvent.Timestamp = time.Now().UnixMilli()
 
 		c.Hub.broadcast <- websocketEvent
 	}
