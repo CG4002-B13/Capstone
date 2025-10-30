@@ -13,7 +13,10 @@ import (
 const EXPIRE_TIME time.Duration = 5 * time.Minute
 
 func (s *S3Service) GeneratePresignedUploadURL(ctx context.Context, fileName string) (string, error) {
-	key := fmt.Sprintf("%s.%s", fileName, "jpg")
+	if !strings.HasSuffix(fileName, ".jpg") {
+		fileName = fileName + ".jpg"
+	}
+	key := fileName
 
 	params := &s3.PutObjectInput{
 		Bucket: aws.String(s.bucketName),

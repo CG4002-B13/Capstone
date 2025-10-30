@@ -51,14 +51,14 @@ func (c *WSClient) readPump() {
 			continue
 		}
 
-		if websocketEvent.EventType.IsS3Event() {
-			HandleS3Request(c, &websocketEvent)
-		}
-
 		websocketEvent.UserID = strings.ToLower(c.UserID)
 		websocketEvent.SessionID = strings.ToLower(c.SessionID)
 
-		c.Hub.broadcast <- websocketEvent
+		if websocketEvent.EventType.IsS3Event() {
+			HandleS3Request(c, &websocketEvent)
+		} else {
+			c.Hub.broadcast <- websocketEvent
+		}
 	}
 }
 

@@ -108,6 +108,7 @@ func handleSyncRequest(ctx context.Context, client *WSClient, event *types.Webso
 
 		listPut = append(listPut, url)
 		responseData["PUT"] = listPut
+		responseData["PUTNames"] = missingInS3
 	}
 
 	for _, file := range missingOnClient {
@@ -121,7 +122,6 @@ func handleSyncRequest(ctx context.Context, client *WSClient, event *types.Webso
 
 		listGet = append(listGet, url)
 		responseData["GET"] = listGet
-		responseData["GETNames"] = missingOnClient
 	}
 
 	response := &types.WebsocketEvent{
