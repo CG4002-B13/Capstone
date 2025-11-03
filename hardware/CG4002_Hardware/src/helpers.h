@@ -13,6 +13,12 @@
 #include <Setup.hpp>
 #include <WiFiClientSecure.h>
 
+extern WiFiClientSecure wifiClient;
+extern CertificateManager certificateManager;
+extern MQTTClient mqttClient;
+extern DFRobot_MAX17043 battMonitor;
+extern MPU6050 mpu;
+
 extern float pitch_deg, roll_deg, yaw_deg;
 extern float gyro_bias_x, gyro_bias_y, gyro_bias_z;
 
@@ -37,6 +43,8 @@ static int16_t ax, ay, az, gx, gy, gz;
 static float AccX, AccY, AccZ, GyroX, GyroY, GyroZ;
 
 static int intFlag = 0; //interrupt flag
+static int totalSamples = SAMPLING_RATE * RECORD_TIME;
+static int16_t message[16003];
 
 bool isStill(float ax_g, float ay_g, float az_g, float gx_dps, float gy_dps,
               float gz_dps);
@@ -46,9 +54,4 @@ void writeWavHeader(File &file);
 void LedTask(void *parameter);
 void batteryTask(void *parameter);
 void i2sInit();
-
-WiFiClientSecure wifiClient;
-CertificateManager certificateManager;
-MQTTClient mqttClient(wifiClient, certificateManager);
-DFRobot_MAX17043 battMonitor;
-MPU6050 mpu;
+void recordVoice(int16_t flag);

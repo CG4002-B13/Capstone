@@ -1,5 +1,11 @@
 #include "helpers.h"
 
+WiFiClientSecure wifiClient;
+CertificateManager certificateManager;
+MQTTClient mqttClient(wifiClient, certificateManager);
+DFRobot_MAX17043 battMonitor;
+MPU6050 mpu;
+
 float pitch_deg = 0.0f, roll_deg = 0.0f, yaw_deg = 0.0f;
 float gyro_bias_x = 0.0f, gyro_bias_y = 0.0f, gyro_bias_z = 0.0f;
 
@@ -91,50 +97,27 @@ void mpuLoop(MPU6050 mpu) {
     }
 }
 
-void batteryTask(void *parameter) {
-    float perc = battMonitor.readPercentage();
-    if (perc > 70.0) {
-        analogWrite(GREEN_PIN, 100);
-        delay(50);
-        analogWrite(GREEN_PIN, 0);
-    } else if (perc > 40.0) {
-        analogWrite(RED_PIN, 100);
-        analogWrite(GREEN_PIN, 40);
-        delay(50);
-        analogWrite(RED_PIN, 0);
-        analogWrite(GREEN_PIN, 0);
-    } else {
-        analogWrite(RED_PIN, 100);
-        delay(50);
-        analogWrite(RED_PIN, 0);
-    }
-    vTaskDelay(pdMS_TO_TICKS(2000));
-}
-void writeWavHeader(File &file) {
-  uint32_t byteRate = SAMPLING_RATE * 2; // 16-bit mono
-  uint32_t blockAlign = 2;
-  uint32_t dataSize = SAMPLING_RATE * RECORD_TIME * 2;
-
-  file.write((const uint8_t *)"RIFF", 4);
-  uint32_t fileSize = 36 + dataSize;
-  file.write((uint8_t *)&fileSize, 4);
-  file.write((const uint8_t *)"WAVEfmt ", 8);
-
-  uint32_t subChunk1Size = 16;
-  uint16_t audioFormat = 1;
-  uint16_t numChannels = 1;
-  uint16_t bitsPerSample = 16;
-
-  file.write((uint8_t *)&subChunk1Size, 4);
-  file.write((uint8_t *)&audioFormat, 2);
-  file.write((uint8_t *)&numChannels, 2);
-  file.write((uint8_t *)SAMPLING_RATE, 4);
-  file.write((uint8_t *)&byteRate, 4);
-  file.write((uint8_t *)&blockAlign, 2);
-  file.write((uint8_t *)&bitsPerSample, 2);
-  file.write((const uint8_t *)"data", 4);
-  file.write((uint8_t *)&dataSize, 4);
-}
+// void batteryTask(void *parameter) {
+//     while (1) {
+//         float perc = battMonitor.readPercentage();
+//         if (perc > 70.0) {
+//             analogWrite(GREEN_PIN, 100);
+//             delay(50);
+//             analogWrite(GREEN_PIN, 0);
+//         } else if (perc > 40.0) {
+//             analogWrite(RED_PIN, 100);
+//             analogWrite(GREEN_PIN, 40);
+//             delay(50);
+//             analogWrite(RED_PIN, 0);
+//             analogWrite(GREEN_PIN, 0);
+//         } else {
+//             analogWrite(RED_PIN, 100);
+//             delay(50);
+//             analogWrite(RED_PIN, 0);
+//         }
+//         vTaskDelay(pdMS_TO_TICKS(2000));
+//     }
+// }
 
 void LedTask(void *parameter) {
     while (1) {
@@ -171,4 +154,34 @@ void i2sInit() {
     i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL);
     i2s_set_pin(I2S_NUM_0, &pin_config);
     i2s_zero_dma_buffer(I2S_NUM_0);
+}
+
+void recordVoice(int16_t flag) {
+    message[0] = flag;
+    int32_t data_buffer[512];
+    size_t bytes_read = 0;
+    int samplesWritten = 0;
+    while (samplesWritten < totalSamples) {
+        recording = true;
+        i2s_read(I2S_NUM_0, &data_buffer, sizeof(data_buffer), &bytes_read, portMAX_DELAY);
+        int samples = bytes_read / 4;
+        for (int i = 0; i < samples; i++) {
+            int16_t temp = data_buffer[i] >> 14;
+            message[samplesWritten+i+1] = temp;
+            if (samplesWritten + i >= totalSamples) break;
+        }
+        samplesWritten += samples;
+    }
+    Serial.println(message[0]);
+    recording = false;
+    delay(20);
+    for (int i = 0; i <= 2; i++) {
+        int16_t *temp = &message[4000*i];
+        message[4000*i] = message[0];
+        if (mqttClient.publishBinary(VOICE_DATA, reinterpret_cast<uint8_t *>(temp), 8001 * sizeof(int16_t))) {
+            tone(BUZZER, NOTE_D5, NOTE_DURATION);
+        } else {
+            tone(BUZZER, NOTE_D2, NOTE_DURATION);
+        }
+    }
 }
