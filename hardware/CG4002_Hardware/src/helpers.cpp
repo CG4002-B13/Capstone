@@ -97,27 +97,23 @@ void mpuLoop(MPU6050 mpu) {
     }
 }
 
-// void batteryTask(void *parameter) {
-//     while (1) {
-//         float perc = battMonitor.readPercentage();
-//         if (perc > 70.0) {
-//             analogWrite(GREEN_PIN, 100);
-//             delay(50);
-//             analogWrite(GREEN_PIN, 0);
-//         } else if (perc > 40.0) {
-//             analogWrite(RED_PIN, 100);
-//             analogWrite(GREEN_PIN, 40);
-//             delay(50);
-//             analogWrite(RED_PIN, 0);
-//             analogWrite(GREEN_PIN, 0);
-//         } else {
-//             analogWrite(RED_PIN, 100);
-//             delay(50);
-//             analogWrite(RED_PIN, 0);
-//         }
-//         vTaskDelay(pdMS_TO_TICKS(2000));
-//     }
-// }
+void checkBattery(float perc) {
+    if (perc > 70.0) {
+        analogWrite(GREEN_PIN, 100);
+        delay(50);
+        analogWrite(GREEN_PIN, 0);
+    } else if (perc > 40.0) {
+        analogWrite(RED_PIN, 100);
+        analogWrite(GREEN_PIN, 40);
+        delay(50);
+        analogWrite(RED_PIN, 0);
+        analogWrite(GREEN_PIN, 0);
+    } else {
+        analogWrite(RED_PIN, 100);
+        delay(50);
+        analogWrite(RED_PIN, 0);
+    }
+}
 
 void LedTask(void *parameter) {
     while (1) {

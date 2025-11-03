@@ -52,6 +52,6 @@ void calibrateGyroBias(MPU6050 mpu);
 void mpuLoop(MPU6050 mpu);
 void writeWavHeader(File &file);
 void LedTask(void *parameter);
-void batteryTask(void *parameter);
+void checkBattery(float perc);
 void i2sInit();
 void recordVoice(int16_t flag);

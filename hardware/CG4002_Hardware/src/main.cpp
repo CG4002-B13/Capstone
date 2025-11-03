@@ -139,14 +139,14 @@ void loop() {
         }
     }
 
-    // if ((now - batt_debounce) > DEBOUNCE * 6) {
-    //     // only need to update battery percentage once in a while
-    //     batt_debounce = now;
-    //     float voltage = battMonitor.readVoltage();
-    //     float percentage = battMonitor.readPercentage();
-    //     Serial.printf("%2.4f, %2.2f\n", voltage, percentage);
-    //     checkBattery(percentage);
-    // }
+    if ((now - batt_debounce) > DEBOUNCE * 6) {
+        // only need to update battery percentage once in a while
+        batt_debounce = now;
+        float voltage = battMonitor.readVoltage();
+        float percentage = battMonitor.readPercentage();
+        Serial.printf("%2.4f, %2.2f\n", voltage, percentage);
+        checkBattery(percentage);
+    }
 
     if (intFlag == 1) {
         intFlag = 0;
