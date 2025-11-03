@@ -21,8 +21,8 @@
 #define RED_PIN 19
 #define BLUE_PIN 18
 
-#define BUTTON_SCREENSHOT 9 //D5
-#define BUTTON_SELECT 27 //D4
+#define BUTTON_SCREENSHOT 27 //D4
+#define BUTTON_SELECT 9 //D5
 #define BUTTON_DELETE 10 //D6
 #define BUTTON_MOVE 13 //D7
 #define BUTTON_ROTATE 5 //D8
@@ -38,7 +38,7 @@
 #define RECORD_TIME 2 //seconds
 #define HEADER_SIZE 44
 
-#define DEBOUNCE 500 //constant debouncing of 2 seconds
+#define DEBOUNCE 4000 //prevent multiple voice recordings to be sent at once
 #define STREAMING_DEBOUNCE 200
 
 //buzzer constants
