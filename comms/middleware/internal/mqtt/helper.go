@@ -31,8 +31,9 @@ func HandleCommand(c mqtt.Client, m mqtt.Message) {
 		var event types.WebsocketEvent
 		switch msg.Type {
 		case types.DEBUG:
+			log.Printf("Detected type debug")
 			debug.StartDebugSession()
-			debug.AddData(types.ORIGINAL_TIME, msg.Timestamp)
+			debug.AddData(types.INITIAL_MQTT_TIME, msg.Timestamp)
 			debug.AddData(types.ESP32_TO_SERVER, time.Now().UnixMilli()-msg.Timestamp)
 
 			event = types.WebsocketEvent{
@@ -86,8 +87,8 @@ func HandleVoiceResult(c mqtt.Client, m mqtt.Message) {
 		var event types.WebsocketEvent
 		switch base.Status {
 		case types.VOICE_DEBUG:
-			var msg types.DebugInfo
-			if err := json.Unmarshal(payload, &msg); err != nil {
+			var data types.VoiceDebug
+			if err := json.Unmarshal(payload, &data); err != nil {
 				log.Printf("Failed to unmarshal message: %v", err)
 				return
 			}
@@ -97,10 +98,11 @@ func HandleVoiceResult(c mqtt.Client, m mqtt.Message) {
 				SendDebugStatus("Debug session not started")
 			}
 
-			currTime := time.Now().UnixMilli()
-			ultra96ToServer := currTime - msg.Ultra96SendTime
-			esp32ToUltra96 := msg.Ultra96ReceiveTime - debug.GetData(types.ORIGINAL_TIME)
-			infTime := msg.InferenceTime
+			initialTime := debug.GetData(types.INITIAL_MQTT_TIME)
+			ultra96ToServer := time.Now().UnixMilli() - data.Info.Ultra96SendTime
+			esp32ToUltra96 := data.Info.Ultra96ReceiveTime - initialTime
+			infTime := data.Info.InferenceTime
+			log.Printf("initime:%d, sendTime:%d, receiveTime:%d, infTime:%d", initialTime, data.Info.Ultra96SendTime, data.Info.Ultra96ReceiveTime, data.Info.InferenceTime)
 
 			debug.AddData(types.ULTRA96_TO_SERVER, ultra96ToServer)
 			debug.AddData(types.ESP32_TO_ULTRA96, esp32ToUltra96)
@@ -157,14 +159,16 @@ func SendDebugStatus(m interface{}) {
 	switch v := m.(type) {
 	case string:
 		payload = []byte(v)
-	case map[string]interface{}:
-		payload, err = json.Marshal(v)
+	case *types.LatencyInfo:
+		payload, err = json.MarshalIndent(v, "", "  ")
 		if err != nil {
 			// handle error, maybe log and return
+			log.Printf("Error marshalling JSON for debug status")
 			return
 		}
 	default:
 		// unsupported type
+		log.Printf("Unsupported type for debug status")
 		return
 	}
 

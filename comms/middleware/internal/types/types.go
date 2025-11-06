@@ -64,14 +64,15 @@ const (
 	S3_ERROR           EventType = "S3_ERROR"
 
 	// For Latency Testing
-	ORIGINAL_TIME      TimeField = "Original Time"
-	ESP32_TO_SERVER    TimeField = "ESP32 To Server"
-	ESP32_TO_ULTRA96   TimeField = "ESP32 To Ultra96"
-	ULTRA96_TO_SERVER  TimeField = "Ultra96 To Server"
-	SERVER_TO_VIS      TimeField = "Server To Visualiser"
-	INFERENCE_TIME     TimeField = "Inference Time"
-	END_TO_END_GESTURE TimeField = "End To End Gesture"
-	END_TO_END_VOICE   TimeField = "End To End Voice"
+	INITIAL_MQTT_TIME   TimeField = "Original MQTT Time"
+	ESP32_TO_SERVER     TimeField = "ESP32 To Server"
+	ESP32_TO_ULTRA96    TimeField = "ESP32 To Ultra96"
+	ULTRA96_TO_SERVER   TimeField = "Ultra96 To Server"
+	SERVER_TO_VIS       TimeField = "Server To Visualiser"
+	INFERENCE_TIME      TimeField = "Inference Time"
+	INITIAL_SERVER_TIME TimeField = "Original Server Time"
+	END_TO_END_GESTURE  TimeField = "End To End Gesture"
+	END_TO_END_VOICE    TimeField = "End To End Voice"
 )
 
 func (c CommandType) ToEventType() EventType {
@@ -84,6 +85,10 @@ func (v VoiceCommandType) ToEventType() EventType {
 
 func (e EventType) IsS3Event() bool {
 	return strings.HasPrefix(string(e), "S3_")
+}
+
+func (e EventType) IsDebugEvent() bool {
+	return strings.HasPrefix(string(e), "DEBUG_")
 }
 
 // esp32/command
@@ -130,11 +135,11 @@ type WebsocketEvent struct {
 }
 
 type LatencyInfo struct {
-	ESP32ToServer      string `json:"Latency Between ESP32 and Server    "`
-	ESP32ToUltra96     string `json:"Latency Between ESP32 and Ultra96   "`
-	Ultra96ToServer    string `json:"Latency Between Ultra96 and Server  "`
+	ESP32ToServer      string `json:"Latency Between ESP32 and Server"`
+	ESP32ToUltra96     string `json:"Latency Between ESP32 and Ultra96"`
+	Ultra96ToServer    string `json:"Latency Between Ultra96 and Server"`
 	ServerToVisualiser string `json:"Latency Between server to visualiser"`
-	InferenceTime      string `json:"Inference Time                      "`
-	EndToEndGesture    string `json:"E2E Latency for Gesture             "`
-	EndToEndVoice      string `json:"E2E Latency for Voices              "`
+	InferenceTime      string `json:"Inference Time"`
+	EndToEndGesture    string `json:"E2E Latency for Gesture"`
+	EndToEndVoice      string `json:"E2E Latency for Voices"`
 }

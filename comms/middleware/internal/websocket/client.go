@@ -56,6 +56,8 @@ func (c *WSClient) readPump() {
 
 		if websocketEvent.EventType.IsS3Event() {
 			HandleS3Request(c, &websocketEvent)
+		} else if websocketEvent.EventType.IsDebugEvent() {
+			handleDebugResponse(&websocketEvent)
 		} else {
 			c.Hub.broadcast <- websocketEvent
 		}

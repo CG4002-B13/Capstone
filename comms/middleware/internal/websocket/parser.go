@@ -7,6 +7,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/ParthGandhiNUS/CG4002/internal/debug"
 	"github.com/ParthGandhiNUS/CG4002/internal/s3"
 	"github.com/ParthGandhiNUS/CG4002/internal/types"
 )
@@ -36,6 +37,7 @@ func HandleS3Request(client *WSClient, event *types.WebsocketEvent) {
 			defer cancel()
 			handleDeleteRequest(ctx, client, event)
 		}()
+
 	default:
 		cancel()
 		log.Printf("Unknown S3 Event Type: %s", event.EventType)
@@ -182,4 +184,33 @@ func sendS3Response(client *WSClient, response *types.WebsocketEvent) {
 	case <-time.After(5 * time.Second):
 		log.Printf("Failed to send response - client send channel timeout")
 	}
+}
+
+func handleDebugResponse(event *types.WebsocketEvent) {
+	timestamp, ok := event.Data.(int64)
+	if !ok {
+		log.Printf("Incorrect timestamp received for debug mode")
+	}
+	serverInitialTime := debug.GetData(types.INITIAL_SERVER_TIME)
+	mqttInitialTime := debug.GetData(types.INITIAL_MQTT_TIME)
+
+	if serverInitialTime == 0 || mqttInitialTime == 0 {
+		log.Printf("No initial debug time set")
+		return
+	}
+
+	if debug.GetData(types.SERVER_TO_VIS) != 0 {
+		debug.AddData(types.SERVER_TO_VIS, timestamp-serverInitialTime)
+	}
+
+	switch event.EventType {
+	case types.DEBUG_GESTURE_PONG:
+		debug.AddData(types.END_TO_END_GESTURE, timestamp-mqttInitialTime)
+	case types.DEBUG_VIDEO_PONG:
+		debug.AddData(types.END_TO_END_VOICE, timestamp-mqttInitialTime)
+	default:
+		log.Printf("Invalid Debug Response Sent")
+		return
+	}
+
 }

@@ -3,6 +3,7 @@ package debug
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -30,6 +31,7 @@ type DataCollector struct {
 	done     chan struct{}
 }
 
+// FIX 1: Protect with mutex
 func IsDebugActive() bool {
 	mu.RLock()
 	defer mu.RUnlock()
@@ -46,20 +48,23 @@ func StartDebugSession() bool {
 	mu.Lock()
 	defer mu.Unlock()
 
-	if IsDebugActive() {
+	log.Println("Acquired lock in StartDebugSession")
+
+	if DebugCollector != nil {
+		log.Println("Debug is already active, returning")
 		return false
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), DURATION)
-
 	DebugCollector = &DataCollector{
 		data: make(map[types.TimeField]int64),
 		required: []types.TimeField{
-			types.ORIGINAL_TIME,
+			types.INITIAL_MQTT_TIME,
 			types.ESP32_TO_SERVER,
 			types.ESP32_TO_ULTRA96,
 			types.ULTRA96_TO_SERVER,
 			types.INFERENCE_TIME,
+			types.INITIAL_SERVER_TIME,
 			types.SERVER_TO_VIS,
 			types.END_TO_END_GESTURE,
 			types.END_TO_END_VOICE,
@@ -69,7 +74,18 @@ func StartDebugSession() bool {
 		done:   make(chan struct{}),
 	}
 
-	go run()
+	log.Printf("DebugCollector created and started")
+	go DebugCollector.run() // FIX 3: Call as method with receiver
+	return true
+}
+
+// FIX 2: Create internal version without lock
+func (dc *DataCollector) isCompleteLocked() bool {
+	for _, key := range dc.required {
+		if _, exists := dc.data[key]; !exists {
+			return false
+		}
+	}
 	return true
 }
 
@@ -82,8 +98,10 @@ func (dc *DataCollector) AddData(key types.TimeField, value int64) bool {
 	}
 
 	dc.data[key] = value
+	log.Printf("Added %d to %s", value, key)
 
-	if dc.isComplete() {
+	// FIX 2: Use internal version that doesn't acquire lock
+	if dc.isCompleteLocked() {
 		dc.cancel()
 	}
 	return true
@@ -123,27 +141,21 @@ func (dc *DataCollector) getFullDataCopy() map[types.TimeField]int64 {
 	return copy
 }
 
+// Public version with lock (if needed elsewhere)
 func (dc *DataCollector) isComplete() bool {
 	dc.dataLock.RLock()
 	defer dc.dataLock.RUnlock()
-
-	for _, key := range dc.required {
-		if _, exists := dc.data[key]; !exists {
-			return false
-		}
-	}
-	return true
+	return dc.isCompleteLocked()
 }
 
 func toLatencyInfo(data map[types.TimeField]int64) *types.LatencyInfo {
 	fmtLatency := func(t types.TimeField) string {
 		v, ok := data[t]
 		if !ok {
-			return ""
+			return "no data available"
 		}
 		return fmt.Sprintf("%dms", v)
 	}
-
 	return &types.LatencyInfo{
 		ESP32ToServer:      fmtLatency(types.ESP32_TO_SERVER),
 		ESP32ToUltra96:     fmtLatency(types.ESP32_TO_ULTRA96),
@@ -155,21 +167,25 @@ func toLatencyInfo(data map[types.TimeField]int64) *types.LatencyInfo {
 	}
 }
 
-func run() {
-	<-DebugCollector.ctx.Done()
+// FIX 3: Make this a method so it has proper receiver
+func (dc *DataCollector) run() {
+	<-dc.ctx.Done()
 
+	// Get complete status and data copy
+	dataCopy := dc.getFullDataCopy()
+	latencyInfo := toLatencyInfo(dataCopy)
+
+	// Now acquire global mutex to clear DebugCollector
 	mu.Lock()
-	defer mu.Unlock()
-
-	if DebugCollector.isComplete() {
-		dataCopy := DebugCollector.getFullDataCopy()
-		latencyInfo := toLatencyInfo(dataCopy)
-		if SendDebugCallback != nil {
-			SendDebugCallback(latencyInfo)
-		}
-	}
-	close(DebugCollector.done)
 	DebugCollector = nil
+	mu.Unlock()
+
+	// Send callback after releasing mutex to avoid holding lock during callback
+	if SendDebugCallback != nil {
+		SendDebugCallback(latencyInfo)
+	}
+
+	close(dc.done)
 }
 
 func Wait() {
