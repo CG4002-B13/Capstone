@@ -4,6 +4,7 @@
 
 volatile bool recording = false;
 volatile bool ledOn = false;
+volatile bool first = true;
 
 void interruptCallBack() { intFlag = 1; }
 
@@ -33,7 +34,7 @@ void setup() {
     tone(BUZZER, NOTE_C5, NOTE_DURATION);
     delay(50);
     Serial.println("MPU6050 connected. Calculating gyro bias...");
-    calibrateGyroBias(mpu);
+    //calibrateGyroBias(mpu);
     tone(BUZZER, NOTE_C5, NOTE_DURATION);
     Serial.printf("Gyro bias (dps): x=%.3f y=%.3f z=%.3f\n", gyro_bias_x,
                   gyro_bias_y, gyro_bias_z);
@@ -58,9 +59,9 @@ void setup() {
     analogWrite(RED_PIN, 100);
     analogWrite(BLUE_PIN, 100);
     delay(50);
-    analogWrite(GREEN_PIN, 0);
-    analogWrite(RED_PIN, 0);
-    analogWrite(BLUE_PIN, 0);
+    analogWrite(GREEN_PIN, 255);
+    analogWrite(RED_PIN, 255);
+    analogWrite(BLUE_PIN, 255);
 
     //creates task to light up LED when recording
     xTaskCreatePinnedToCore(LedTask, "LedTask", 1536, NULL, 1, NULL, 1);
@@ -87,6 +88,7 @@ void loop() {
             delay(20);
             recordVoice(1);
         } else if (digitalRead(BUTTON_SCREENSHOT) == LOW) {
+            button_debounce = now;
             String message = "{\n\"type\": \"SCREENSHOT\"\n}";
             mqttClient.publish(COMMAND, message);
         }
@@ -96,22 +98,34 @@ void loop() {
     while (digitalRead(BUTTON_MOVE) == LOW || digitalRead(BUTTON_ROTATE) == LOW) {
         unsigned long now = millis();
         if (now - streaming_debounce > STREAMING_DEBOUNCE) {
+            static int16_t x1,y1,z1, ax, ay, az, gx, gy, gz;
             mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-            Serial.print(ax);
-            Serial.print(" ");
-            Serial.print(ay);
-            Serial.print(" ");
-            Serial.println(az);
-
             float dt = (now - last_ms) / 1000.0f;
             if (dt <= 0.0f)
                 dt = 1e-3f;
             last_ms = now;
+            // Low-pass accel (for more stable pitch/roll)
+            float acc_alpha = dt / (ACC_LP_TAU + dt); // 0..1
+            accx_lp += acc_alpha * (AccX - accx_lp);
+            accy_lp += acc_alpha * (AccY - accy_lp);
+            accz_lp += acc_alpha * (AccZ - accz_lp);
+            // Serial.print(ax);
+            // Serial.print(" ");
+            // Serial.print(ay);
+            // Serial.print(" ");
+            // Serial.println(az);
+            if (first) {
+                x1 = ax;
+                y1 = ay;
+                z1 = az;
+                first = false;
+            }
+
 
             // Convert to physical units
-            AccX = ax / ACC_SCALE;
-            AccY = ay / ACC_SCALE;
-            AccZ = az / ACC_SCALE;
+            AccX = (ax - x1) / ACC_SCALE;
+            AccY = 2 * (ay - y1) / ACC_SCALE;
+            AccZ = (az - z1) / ACC_SCALE;
 
             streaming_debounce = now;
             String message = "{\n";
@@ -138,6 +152,7 @@ void loop() {
             mqttClient.publish(COMMAND, message);
         }
     }
+    first = true;
 
     if ((now - batt_debounce) > DEBOUNCE * 6) {
         // only need to update battery percentage once in a while
