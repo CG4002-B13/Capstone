@@ -6,8 +6,11 @@ import (
 	"log"
 	"time"
 
+	"github.com/ParthGandhiNUS/CG4002/internal/debug"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
+
+var client *MQTTClient
 
 type MQTTClient struct {
 	Client mqtt.Client
@@ -40,16 +43,21 @@ func NewMQTTClient(clientID, host string, port int, user, pass string, tlsConfig
 		log.Printf("Connection lost: %v", err)
 	}
 
-	client := mqtt.NewClient(opts)
-	if token := client.Connect(); token.Wait() && token.Error() != nil {
+	c := mqtt.NewClient(opts)
+	if token := c.Connect(); token.Wait() && token.Error() != nil {
 		log.Fatalf("Failed to connect to MQTT Broker: %v", token.Error())
 	}
 
-	return &MQTTClient{
-		Client: client,
+	// Initialise callback for Latency Test
+	debug.RegisterSendDebugCallback(SendDebugStatus)
+
+	client = &MQTTClient{
+		Client: c,
 		Host:   host,
 		Port:   port,
 		User:   user,
 		Pass:   pass,
 	}
+
+	return client
 }
