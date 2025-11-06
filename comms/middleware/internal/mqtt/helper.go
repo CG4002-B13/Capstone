@@ -102,7 +102,6 @@ func HandleVoiceResult(c mqtt.Client, m mqtt.Message) {
 			ultra96ToServer := time.Now().UnixMilli() - data.Info.Ultra96SendTime
 			esp32ToUltra96 := data.Info.Ultra96ReceiveTime - initialTime
 			infTime := data.Info.InferenceTime
-			log.Printf("initime:%d, sendTime:%d, receiveTime:%d, infTime:%d", initialTime, data.Info.Ultra96SendTime, data.Info.Ultra96ReceiveTime, data.Info.InferenceTime)
 
 			debug.AddData(types.ULTRA96_TO_SERVER, ultra96ToServer)
 			debug.AddData(types.ESP32_TO_ULTRA96, esp32ToUltra96)
