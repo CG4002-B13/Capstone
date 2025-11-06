@@ -101,17 +101,17 @@ void checkBattery(float perc) {
     if (perc > 70.0) {
         analogWrite(GREEN_PIN, 100);
         delay(50);
-        analogWrite(GREEN_PIN, 0);
+        analogWrite(GREEN_PIN, 255);
     } else if (perc > 40.0) {
         analogWrite(RED_PIN, 100);
-        analogWrite(GREEN_PIN, 40);
+        analogWrite(GREEN_PIN, 255);
         delay(50);
-        analogWrite(RED_PIN, 0);
-        analogWrite(GREEN_PIN, 0);
+        analogWrite(RED_PIN, 255);
+        analogWrite(GREEN_PIN, 255);
     } else {
         analogWrite(RED_PIN, 100);
         delay(50);
-        analogWrite(RED_PIN, 0);
+        analogWrite(RED_PIN, 255);
     }
 }
 
@@ -121,7 +121,7 @@ void LedTask(void *parameter) {
             analogWrite(BLUE_PIN, 100);
             ledOn = true;
         } else if (!recording) {
-            analogWrite(BLUE_PIN, 0);
+            analogWrite(BLUE_PIN, 255);
             ledOn = false;
         }
         vTaskDelay(pdMS_TO_TICKS(100));
