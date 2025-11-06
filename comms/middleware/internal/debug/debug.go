@@ -97,8 +97,22 @@ func AddData(key types.TimeField, value int64) bool {
 	return collector.AddData(key, value)
 }
 
+func GetData(key types.TimeField) int64 {
+	collector := GetDebugCollector()
+	if collector == nil {
+		return 0
+	}
+	return collector.GetData(key)
+}
+
+func (dc *DataCollector) GetData(key types.TimeField) int64 {
+	dc.dataLock.RLock()
+	defer dc.dataLock.RUnlock()
+	return dc.data[key]
+}
+
 // Make a thread-safe copy of data map
-func (dc *DataCollector) getDataCopy() map[types.TimeField]int64 {
+func (dc *DataCollector) getFullDataCopy() map[types.TimeField]int64 {
 	dc.dataLock.RLock()
 	defer dc.dataLock.RUnlock()
 
@@ -148,7 +162,7 @@ func run() {
 	defer mu.Unlock()
 
 	if DebugCollector.isComplete() {
-		dataCopy := DebugCollector.getDataCopy()
+		dataCopy := DebugCollector.getFullDataCopy()
 		latencyInfo := toLatencyInfo(dataCopy)
 		if SendDebugCallback != nil {
 			SendDebugCallback(latencyInfo)

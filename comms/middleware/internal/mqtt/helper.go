@@ -28,25 +28,43 @@ func HandleCommand(c mqtt.Client, m mqtt.Message) {
 
 		log.Printf("[esp32/command] %s", string(m.Payload()))
 
-		var data any
-		if len(msg.Axes) > 0 {
-			data = msg.Axes
-		} else {
-			data = nil
-		}
+		var event types.WebsocketEvent
+		switch msg.Type {
+		case types.DEBUG:
+			debug.StartDebugSession()
+			debug.AddData(types.ORIGINAL_TIME, msg.Timestamp)
+			debug.AddData(types.ESP32_TO_SERVER, time.Now().UnixMilli()-msg.Timestamp)
 
-		event := types.WebsocketEvent{
-			EventType: msg.Type.ToEventType(),
-			UserID:    "*", // fill if needed
-			SessionID: "",  // fill correct session
-			Timestamp: time.Now().UnixMilli(),
-			Data:      data, // the payload
-		}
+			event = types.WebsocketEvent{
+				EventType: types.DEBUG_GESTURE_PING,
+				UserID:    "*",
+				SessionID: "",
+				Timestamp: time.Now().UnixMilli(),
+				Data:      nil,
+			}
 
+		default:
+			var data any
+			if len(msg.Axes) > 0 {
+				data = msg.Axes
+			} else {
+				data = nil
+			}
+
+			event = types.WebsocketEvent{
+				EventType: msg.Type.ToEventType(),
+				UserID:    "*", // fill if needed
+				SessionID: "",  // fill correct session
+				Timestamp: time.Now().UnixMilli(),
+				Data:      data, // the payload
+			}
+
+		}
 		// Create and push websocket event
 		if hub != nil {
 			hub.Broadcast(event)
 		}
+
 	}()
 }
 
@@ -63,6 +81,9 @@ func HandleVoiceResult(c mqtt.Client, m mqtt.Message) {
 			return
 		}
 
+		log.Printf("[ultra96/voice_result] %s", string(payload))
+
+		var event types.WebsocketEvent
 		switch base.Status {
 		case types.VOICE_DEBUG:
 			var msg types.DebugInfo
@@ -79,8 +100,19 @@ func HandleVoiceResult(c mqtt.Client, m mqtt.Message) {
 			currTime := time.Now().UnixMilli()
 			ultra96ToServer := currTime - msg.Ultra96SendTime
 			esp32ToUltra96 := msg.Ultra96ReceiveTime - debug.GetData(types.ORIGINAL_TIME)
+			infTime := msg.InferenceTime
 
-			debug.AddData()
+			debug.AddData(types.ULTRA96_TO_SERVER, ultra96ToServer)
+			debug.AddData(types.ESP32_TO_ULTRA96, esp32ToUltra96)
+			debug.AddData(types.INFERENCE_TIME, infTime)
+
+			event = types.WebsocketEvent{
+				EventType: types.DEBUG_VIDEO_PING,
+				UserID:    "*",
+				SessionID: "",
+				Timestamp: time.Now().UnixMilli(),
+				Data:      nil,
+			}
 
 		case types.SUCCESS:
 			var msg types.VoiceCommand
@@ -98,10 +130,8 @@ func HandleVoiceResult(c mqtt.Client, m mqtt.Message) {
 				eventType = msg.Info.Command.ToEventType()
 			}
 
-			log.Printf("[ultra96/voice_result] %s", string(m.Payload()))
-
 			// Extract Command and Object and attach to data
-			event := types.WebsocketEvent{
+			event = types.WebsocketEvent{
 				EventType: eventType,
 				UserID:    "*", // fill if needed
 				SessionID: "",  // fill correct session
@@ -109,12 +139,12 @@ func HandleVoiceResult(c mqtt.Client, m mqtt.Message) {
 				Data:      data, // the payload
 			}
 
-			// Create and push websocket event
-			if hub != nil {
-				hub.Broadcast(event)
-			}
 		default:
 			return
+		}
+		// Create and push websocket event
+		if hub != nil {
+			hub.Broadcast(event)
 		}
 
 	}()
