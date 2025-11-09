@@ -6,7 +6,6 @@
 
 #define VOICE_DATA "esp32/voice_data"
 #define VOICE_RESULT "ultra96/voice_result"
-//#define GESTURE_DATA "esp32/gesture_data"
 #define COMMAND "esp32/command"
 
 //MAX17043 constants

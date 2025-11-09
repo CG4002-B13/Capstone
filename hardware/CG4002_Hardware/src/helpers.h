@@ -55,3 +55,4 @@ void LedTask(void *parameter);
 void checkBattery(float perc);
 void i2sInit();
 void recordVoice(int16_t flag);
+void sendVoice();

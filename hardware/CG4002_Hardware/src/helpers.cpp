@@ -171,6 +171,10 @@ void recordVoice(int16_t flag) {
     Serial.println(message[0]);
     recording = false;
     delay(20);
+    sendVoice();
+}
+
+void sendVoice() {
     for (int i = 0; i <= 2; i++) {
         int16_t *temp = &message[4000*i];
         message[4000*i] = message[0];

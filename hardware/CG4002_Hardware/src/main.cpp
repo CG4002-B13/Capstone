@@ -5,6 +5,7 @@
 volatile bool recording = false;
 volatile bool ledOn = false;
 volatile bool first = true;
+time_t time_now;
 
 void interruptCallBack() { intFlag = 1; }
 
@@ -100,6 +101,7 @@ void loop() {
         if (now - streaming_debounce > STREAMING_DEBOUNCE) {
             static int16_t x1,y1,z1, ax, ay, az, gx, gy, gz;
             mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+            ax *= -1; //x axis is inverted
             float dt = (now - last_ms) / 1000.0f;
             if (dt <= 0.0f)
                 dt = 1e-3f;
@@ -129,27 +131,47 @@ void loop() {
 
             streaming_debounce = now;
             String message = "{\n";
-            if (digitalRead(BUTTON_MOVE) == LOW) {
+            if (digitalRead(BUTTON_MOVE) == LOW && digitalRead(BUTTON_ROTATE) == LOW) { //debug
+                String message = "{\n\"type\": \"DEBUG\",\n";
+                time(&time_now);
+                message += "\"timestamp\": \"";
+                message += time_now;
+                message += "\"\n}";
+                mqttClient.publish(COMMAND, message);
+                sendVoice();
+            } else if (digitalRead(BUTTON_MOVE) == LOW && digitalRead(BUTTON_ROTATE) == HIGH) {
                 message += "\"type\": \"MOVE\"";
                 //scaling for better movement
                 AccX *=4;
                 AccY *=4;
                 AccZ *=4;
-            } else if (digitalRead(BUTTON_ROTATE) == LOW) {
+                message += ",\n";
+                String axes = "[";
+                axes += String(AccX);
+                axes += ", ";
+                axes += String(AccY);
+                axes += ", ";
+                axes += String(AccZ);
+                axes += "]";
+                message += "\"axes\": ";
+                message += axes;
+                message += "\n}";
+                mqttClient.publish(COMMAND, message);
+            } else if (digitalRead(BUTTON_ROTATE) == LOW && digitalRead(BUTTON_MOVE) == HIGH) {
                 message += "\"type\": \"ROTATE\"";
+                message += ",\n";
+                String axes = "[";
+                axes += String(AccX);
+                axes += ", ";
+                axes += String(AccY);
+                axes += ", ";
+                axes += String(AccZ);
+                axes += "]";
+                message += "\"axes\": ";
+                message += axes;
+                message += "\n}";
+                mqttClient.publish(COMMAND, message);
             }
-            message += ",\n";
-            String axes = "[";
-            axes += String(AccX);
-            axes += ", ";
-            axes += String(AccY);
-            axes += ", ";
-            axes += String(AccZ);
-            axes += "]";
-            message += "\"axes\": ";
-            message += axes;
-            message += "\n}";
-            mqttClient.publish(COMMAND, message);
         }
     }
     first = true;
