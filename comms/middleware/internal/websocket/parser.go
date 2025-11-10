@@ -196,7 +196,9 @@ func handleDebugResponse(event *types.WebsocketEvent) {
 	// 	return
 	// }
 
-	debug.AddData(types.SERVER_TO_VIS, timestamp-serverInitialTime)
+	if debug.GetData(types.SERVER_TO_VIS) == 0 {
+		debug.AddData(types.SERVER_TO_VIS, timestamp-serverInitialTime)
+	}
 
 	switch event.EventType {
 	case types.DEBUG_GESTURE_PONG:
