@@ -3,6 +3,7 @@ import torch
 import torchaudio
 import pandas as pd
 from torch.nn.functional import pad
+from collections import Counter
 
 MIC_SR = 8000
 TARGET_SR = 16000
@@ -31,24 +32,23 @@ class FinetuneDataset(torch.utils.data.Dataset):
             subfolder_path = os.path.join(audio_dir, subfolder)
             filepaths = os.listdir(subfolder_path)
             for audio_file in filepaths:
-                if audio_file in ignored:
+                furniture_name = audio_file.split("_")[2]
+                if audio_file in ignored or furniture_name in ["increase", "decrease", "toggle"]:
                     continue
 
                 audio_path = os.path.join(subfolder_path, audio_file)
                 waveform, sr = torchaudio.load(audio_path)
-                # mono_waveform = waveform.mean(dim=0, keepdim=True)
-                # if sr != TARGET_SR:
-                #     mono_waveform = self.resampler(mono_waveform)
 
-                # mono_waveform = self.pad_or_truncate_wave(mono_waveform)
                 mel_spec = self.mel_transformer(waveform)  # shape: [n_mels, time_frames]
                 mel_spec = self.db_transformer(mel_spec)
                 
                 label = self.df.at[audio_file, "label"]
-                # if label in [9, 10]:
-                #     continue
+                
                 self.waveforms.append(mel_spec)
                 self.labels.append(label)
+        print(self.labels)
+        counts = Counter(self.labels)
+        print(sorted(counts.items()))
 
     def __len__(self):
         return len(self.waveforms)

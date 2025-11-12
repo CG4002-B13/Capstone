@@ -4,7 +4,7 @@
 #include <iostream>
 using namespace std;
 
-#define N_CLASSES 12
+#define N_CLASSES 11
 #define IN_H  64
 #define IN_W  81
 #define IN_C   1

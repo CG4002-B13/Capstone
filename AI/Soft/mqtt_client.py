@@ -66,8 +66,7 @@ class SecureMQTTClient:
                 delay = min(delay * 2, 30)
 
     def _onMessage(self, client, userdata, msg):
-        data = msg.payload.decode()
-        print(f"Received message on {msg.topic}: {data}")
+        data = msg.payload
         self.on_message_callback(data)
 
     def isConnected(self):

@@ -25,7 +25,7 @@ csv_input_path = "./mel_inputs.csv"
 csv_logits_path = "./logits.csv"
 num_files = 8
 
-NUM_CLASSES = 12
+NUM_CLASSES = 11
 MIC_SR = 8000
 N_MELS = 64
 TARGET_SR = 16000
