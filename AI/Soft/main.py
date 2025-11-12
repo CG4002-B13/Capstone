@@ -5,12 +5,22 @@ import json
 from config import MQTT_HOST, MQTT_PORT, MQTT_USER, MQTT_PASS
 from mqtt_client import SecureMQTTClient
 
+counter = 0
+
 def ai_callback(data):
-    waveform = data.split(",")
-    waveform = waveform[:-1]
-    waveform = np.array(waveform, dtype=np.int16)
-    sf.write("output.wav", waveform, 2000, subtype='PCM_16')
+    global counter
+    waveform = np.frombuffer(data, dtype=np.int16)
     print(waveform)
+    print(waveform.shape)
+    command = waveform[0]
+    waveform = waveform[1:]
+    print(command)
+
+    sf.write(f"output{counter}.wav", waveform, 8000, subtype='PCM_16')
+
+    counter += 1
+    if counter == 3:
+        counter = 0
 
 def main():
     mqtt_client = SecureMQTTClient(

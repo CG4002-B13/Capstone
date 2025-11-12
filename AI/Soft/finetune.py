@@ -1,14 +1,16 @@
 import torch
 import torch.nn as nn
-from torch.optim.lr_scheduler import CosineAnnealingLR
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader
 from CNN import CNN
 from finetune_dataset import FinetuneDataset
 
 PRETRAIN_CLASSES = 35
-FINE_TUNED_CLASSES = 12
-EPOCHS_ONLY_CLASSIFIER = 150
+FINE_TUNED_CLASSES = 11
+EPOCHS_ONLY_CLASSIFIER = 200
 EPOCHS_UNFROZEN = 100
+
+labels_dict = {0: "chair", 1: "table", 2: "lamp", 3: "TV", 4: "bed", 5: "plant", 6: "sofa",
+               7: "ODM", 8: "ODM", 9: "up", 10: "down"}
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
@@ -66,8 +68,8 @@ def test_model(dataloader):
             incorrect_idx = (~(predicted == y_batch)).nonzero(as_tuple=True)[0]
             for idx in incorrect_idx:
                 incorrect.append({
-                    "predicted": predicted[idx].item(),
-                    "true": y_batch[idx].item()
+                    "predicted": labels_dict[predicted[idx].item()],
+                    "true": labels_dict[y_batch[idx].item()]
                 })
 
     # average loss and accuracy
@@ -97,9 +99,9 @@ train_data = FinetuneDataset("data/furniture_recorded/labels.csv", "data/furnitu
 train_loader = DataLoader(train_data, batch_size=len(train_data), shuffle=True, pin_memory=True)
 print(len(train_data))
 
-# test_data = FinetuneDataset("data/furniture_recorded/labels.csv", "data/furniture_recorded/testing", "data/furniture_recorded/ignored.txt")
-# test_loader = DataLoader(test_data, batch_size=len(test_data), shuffle=False, pin_memory=True)
-# print(len(test_data))
+test_data = FinetuneDataset("data/furniture_recorded/labels.csv", "data/furniture_recorded/testing", "data/furniture_recorded/ignored.txt")
+test_loader = DataLoader(test_data, batch_size=len(test_data), shuffle=False, pin_memory=True)
+print(len(test_data))
 
 optimizer = torch.optim.Adam(model.parameters(), lr=5e-3)
 loss_fn = torch.nn.CrossEntropyLoss()
@@ -113,7 +115,7 @@ train_model(EPOCHS_ONLY_CLASSIFIER, scheduler=None)
 # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=150)
 # train_model(EPOCHS_UNFROZEN, scheduler=None)
 
-# test_model(train_loader)
-# test_model(test_loader)
+test_model(train_loader)
+test_model(test_loader)
 
 torch.save(model.state_dict(), 'finetune.pth')
