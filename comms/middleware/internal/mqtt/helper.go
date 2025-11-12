@@ -109,7 +109,7 @@ func HandleVoiceResult(c mqtt.Client, m mqtt.Message) {
 			debug.AddData(types.INFERENCE_TIME, infTime)
 
 			event = types.WebsocketEvent{
-				EventType: types.DEBUG_VIDEO_PING,
+				EventType: types.DEBUG_VOICE_PING,
 				UserID:    "*",
 				SessionID: "",
 				Timestamp: time.Now().UnixMilli(),
