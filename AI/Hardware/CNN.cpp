@@ -14,7 +14,7 @@ typedef union {
     unsigned int i;
 } fp_conv;
 
-#define N_CLASSES 6
+#define N_CLASSES 11
 #define IN_H  64
 #define IN_W  81
 #define IN_C   1

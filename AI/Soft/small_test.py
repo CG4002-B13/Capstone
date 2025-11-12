@@ -6,7 +6,6 @@ import csv
 from CNN import CNN
 from torch.nn.functional import pad
 
-
 def pad_or_truncate_wave(waveform):
     if waveform.shape[1] < TARGET_SR:
         total_pad = TARGET_SR - waveform.shape[1]
@@ -19,25 +18,27 @@ def pad_or_truncate_wave(waveform):
     return new_wav
 
 # ---- Config ----
-data_folder = "./data/furniture/audio/testing"
-labels_path = "./data/furniture/labels.csv"
+data_folder = "./data/furniture_recorded/training/person_0"
+labels_path = "./data/furniture_recorded/labels.csv"
 model_path = "./finetune.pth"
 csv_input_path = "./mel_inputs.csv"
 csv_logits_path = "./logits.csv"
 num_files = 8
 
+NUM_CLASSES = 11
+MIC_SR = 8000
 N_MELS = 64
 TARGET_SR = 16000
 
 df = pd.read_csv(labels_path)
 df.set_index("filename", inplace=True)
 resampler = torchaudio.transforms.Resample(orig_freq=48000, new_freq=TARGET_SR)
-mel_transformer = torchaudio.transforms.MelSpectrogram(sample_rate=TARGET_SR, n_mels=N_MELS)
+mel_transformer = torchaudio.transforms.MelSpectrogram(sample_rate=MIC_SR, n_mels=N_MELS)
 db_transformer = torchaudio.transforms.AmplitudeToDB(stype="power")
 
 # ---- Load model ----
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = CNN(6)
+model = CNN(NUM_CLASSES)
 model.load_state_dict(torch.load(model_path, map_location=device))
 model.to(device)
 model.eval()
@@ -49,12 +50,12 @@ inputs_list = []
 labels = []
 for f in files_to_use:
     waveform, sr = torchaudio.load(data_folder + "/" + f)
-    mono_waveform = waveform.mean(dim=0, keepdim=True)
-    if sr != TARGET_SR:
-        mono_waveform = resampler(mono_waveform)
+    # mono_waveform = waveform.mean(dim=0, keepdim=True)
+    # if sr != TARGET_SR:
+    #     mono_waveform = resampler(mono_waveform)
 
-    mono_waveform = pad_or_truncate_wave(mono_waveform)
-    mel_spec = mel_transformer(mono_waveform)  # shape: [n_mels, time_frames]
+    # mono_waveform = pad_or_truncate_wave(mono_waveform)
+    mel_spec = mel_transformer(waveform)  # shape: [n_mels, time_frames]
     mel_spec = db_transformer(mel_spec)
     label = df.at[f, "label"]
 
