@@ -102,6 +102,7 @@ void sendVoice() {
             tone(BUZZER, NOTE_D5, NOTE_DURATION);
         } else {
             tone(BUZZER, NOTE_D2, NOTE_DURATION);
+            break;
         }
     }
 }
