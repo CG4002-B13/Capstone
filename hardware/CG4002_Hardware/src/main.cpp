@@ -109,10 +109,21 @@ void loop() {
                 first = false;
             }
 
+            //ignore small values
+            if (dx < 0.2) {
+                dx = 0;
+            }
+            if (dy < 0.2) {
+                dy = 0;
+            }
+            if (dz < 0.2) {
+                dz = 0;
+            }
+
             // Convert to physical units
             AccX = -2 * (dx - x1) / ACC_SCALE;
             AccY = -2 * (dz - z1) / ACC_SCALE;
-            AccZ = -3 * (dy - y1) / ACC_SCALE;
+            AccZ = -2 * (dy - y1) / ACC_SCALE;
 
             // Lock to maximum
             if (AccX > 2) {
@@ -123,6 +134,16 @@ void loop() {
             }
             if (AccZ > 2) {
                 AccZ = 2;
+            }
+            if (abs(AccY) > abs(AccX) && abs(AccY) > abs(AccZ)) {
+                AccX = 0;
+                AccZ = 0;
+            } else if (abs(AccX) > abs(AccY) && abs(AccX) > abs(AccZ)) {
+                AccY = 0;
+                AccZ = 0;
+            } else if (abs(AccZ) > abs(AccY) && abs(AccZ) > abs(AccX)) {
+                AccY = 0;
+                AccX = 0;
             }
 
             streaming_debounce = now;
@@ -140,9 +161,9 @@ void loop() {
             } else if (digitalRead(BUTTON_MOVE) == LOW && digitalRead(BUTTON_ROTATE) == HIGH) {
                 message += "\"type\": \"MOVE\"";
                 //scaling for better movement
-                AccX *=2;
-                AccY *=2;
-                AccZ;
+                AccX *= 2;
+                AccY *= 2.2;
+                AccZ *= 2.5;
                 message += ",\n";
                 String axes = "[";
                 axes += String(AccX);
@@ -158,24 +179,13 @@ void loop() {
             } else if (digitalRead(BUTTON_ROTATE) == LOW && digitalRead(BUTTON_MOVE) == HIGH) {
                 message += "\"type\": \"ROTATE\"";
                 message += ",\n";
-                if (AccY > AccX && AccY > AccZ) {
-                    AccX = 0;
-                    AccZ = 0;
-                } else if (AccX > AccY && AccX > AccZ) {
-                    AccY = 0;
-                    AccZ = 0;
-                } else if (AccZ > AccY && AccZ > AccX) {
-                    AccY = 0;
-                    AccX = 0;
-                }
+                if (AccZ > 0) AccZ *= 1.5;
                 String axes = "[";
                 axes += String(AccY);
                 axes += ", ";
-                AccX *= -1;
-                axes += String(AccX);
-                axes += ", ";
-                AccZ *= -1;
                 axes += String(AccZ);
+                axes += ", ";
+                axes += String(AccX);
                 axes += "]";
                 message += "\"axes\": ";
                 message += axes;
