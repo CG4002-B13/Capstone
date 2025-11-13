@@ -17,6 +17,7 @@ const char MQTT_COMMAND_TOPIC[] = "esp32/command";
 const unsigned long MQTT_RECONNECT_DELAY = 5000;
 const unsigned long MESSAGE_PUBLISH_INTERVAL = 3000;
 const uint16_t BUFFER_SIZE = 65535;
+const uint16_t NETWORK_TIMEOUT = 2;
 
 class MQTTClient {
 private:

@@ -38,7 +38,8 @@
 #define HEADER_SIZE 44
 
 #define DEBOUNCE 4000 //prevent multiple voice recordings to be sent at once
-#define STREAMING_DEBOUNCE 200
+#define BATTERY_DEBOUNCE 30000 // only need to check battery every 30s
+#define STREAMING_DEBOUNCE 100
 
 //buzzer constants
 #define NOTE_DURATION 100
