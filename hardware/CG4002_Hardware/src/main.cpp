@@ -1,11 +1,10 @@
 #include "constants.h"
 #include "helpers.h"
-#include <base64.hpp>
 
 volatile bool recording = false;
 volatile bool ledOn = false;
 volatile bool first = true;
-time_t time_now;
+struct timeval tv;
 
 void interruptCallBack() { intFlag = 1; }
 
@@ -34,22 +33,18 @@ void setup() {
     mpu.initialize();
     tone(BUZZER, NOTE_C5, NOTE_DURATION);
     delay(50);
-    Serial.println("MPU6050 connected. Calculating gyro bias...");
-    //calibrateGyroBias(mpu);
+    //Serial.println("MPU6050 connected. Calculating gyro bias...");
     tone(BUZZER, NOTE_C5, NOTE_DURATION);
-    Serial.printf("Gyro bias (dps): x=%.3f y=%.3f z=%.3f\n", gyro_bias_x,
-                  gyro_bias_y, gyro_bias_z);
 
     delay(100);
     if (battMonitor.begin() == 0) {
-        Serial.println("MAX17043 initialized.");
+        //Serial.println("MAX17043 initialized.");
         tone(BUZZER, NOTE_C5, NOTE_DURATION);
         //    battMonitor.setInterrupt(LOW_BATTERY); // sends an interrupt to
         //    warn when
         // the battery hits the threshold
     } else {
-        Serial.println(
-            "MAX17043 not initialized. Battery health not monitored.");
+        //Serial.println("MAX17043 not initialized. Battery health not monitored.");
     }
 
     // set up RGB Led pins
@@ -67,7 +62,7 @@ void setup() {
     //creates task to light up LED when recording
     xTaskCreatePinnedToCore(LedTask, "LedTask", 1536, NULL, 1, NULL, 1);
     i2sInit();
-    Serial.println("I2S initialized");
+    //Serial.println("I2S initialized");
 }
 
 void loop() {
@@ -93,58 +88,61 @@ void loop() {
             String message = "{\n\"type\": \"SCREENSHOT\"\n}";
             mqttClient.publish(COMMAND, message);
         }
-        delay(20);
+        delay(250); //blocks other commands between 
     }
 
     while (digitalRead(BUTTON_MOVE) == LOW || digitalRead(BUTTON_ROTATE) == LOW) {
         unsigned long now = millis();
         if (now - streaming_debounce > STREAMING_DEBOUNCE) {
-            static int16_t x1,y1,z1, ax, ay, az, gx, gy, gz;
-            mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-            ax *= -1; //x axis is inverted
-            float dt = (now - last_ms) / 1000.0f;
-            if (dt <= 0.0f)
-                dt = 1e-3f;
-            last_ms = now;
-            // Low-pass accel (for more stable pitch/roll)
-            float acc_alpha = dt / (ACC_LP_TAU + dt); // 0..1
-            accx_lp += acc_alpha * (AccX - accx_lp);
-            accy_lp += acc_alpha * (AccY - accy_lp);
-            accz_lp += acc_alpha * (AccZ - accz_lp);
-            // Serial.print(ax);
-            // Serial.print(" ");
-            // Serial.print(ay);
-            // Serial.print(" ");
-            // Serial.println(az);
+            static int16_t x1,y1,z1, ax, ay, az;
+            mpu.getAcceleration(&ax, &ay, &az);
+            float dx = (float) ax;
+            float dy = (float) ay;
+            float dz = (float) az;
+            dx = (0.01 * dx) + (0.09 * dx) + (0.9 * dx);
+            dy = (0.01 * dy) + (0.09 * dy) + (0.9 * dy);
+            dz = (0.01 * dz) + (0.09 * dz) + (0.9 * dz);
             if (first) {
-                x1 = ax;
-                y1 = ay;
-                z1 = az;
+                x1 = dx;
+                y1 = dy;
+                z1 = dz;
                 first = false;
             }
 
-
             // Convert to physical units
-            AccX = (ax - x1) / ACC_SCALE;
-            AccY = 2 * (ay - y1) / ACC_SCALE;
-            AccZ = (az - z1) / ACC_SCALE;
+            AccX = -2 * (dx - x1) / ACC_SCALE;
+            AccY = -2 * (dz - z1) / ACC_SCALE;
+            AccZ = -3 * (dy - y1) / ACC_SCALE;
+
+            // Lock to maximum
+            if (AccX > 2) {
+                AccX = 2;
+            }
+            if (AccY > 2) {
+                AccY = 2;
+            }
+            if (AccZ > 2) {
+                AccZ = 2;
+            }
 
             streaming_debounce = now;
             String message = "{\n";
             if (digitalRead(BUTTON_MOVE) == LOW && digitalRead(BUTTON_ROTATE) == LOW) { //debug
                 String message = "{\n\"type\": \"DEBUG\",\n";
-                time(&time_now);
-                message += "\"timestamp\": \"";
+                gettimeofday(&tv, NULL);
+                unsigned long long time_now = (unsigned long long) (tv.tv_sec) * 1000 + (unsigned long long) (tv.tv_usec) / 1000;
+                message += "\"timestamp\": ";
                 message += time_now;
-                message += "\"\n}";
+                message += "\n}";
                 mqttClient.publish(COMMAND, message);
+                streaming_debounce += 2000; //prevent spamming of debug
                 sendVoice();
             } else if (digitalRead(BUTTON_MOVE) == LOW && digitalRead(BUTTON_ROTATE) == HIGH) {
                 message += "\"type\": \"MOVE\"";
                 //scaling for better movement
-                AccX *=4;
-                AccY *=4;
-                AccZ *=4;
+                AccX *=2;
+                AccY *=2;
+                AccZ;
                 message += ",\n";
                 String axes = "[";
                 axes += String(AccX);
@@ -160,11 +158,23 @@ void loop() {
             } else if (digitalRead(BUTTON_ROTATE) == LOW && digitalRead(BUTTON_MOVE) == HIGH) {
                 message += "\"type\": \"ROTATE\"";
                 message += ",\n";
+                if (AccY > AccX && AccY > AccZ) {
+                    AccX = 0;
+                    AccZ = 0;
+                } else if (AccX > AccY && AccX > AccZ) {
+                    AccY = 0;
+                    AccZ = 0;
+                } else if (AccZ > AccY && AccZ > AccX) {
+                    AccY = 0;
+                    AccX = 0;
+                }
                 String axes = "[";
-                axes += String(AccX);
-                axes += ", ";
                 axes += String(AccY);
                 axes += ", ";
+                AccX *= -1;
+                axes += String(AccX);
+                axes += ", ";
+                AccZ *= -1;
                 axes += String(AccZ);
                 axes += "]";
                 message += "\"axes\": ";
@@ -176,19 +186,19 @@ void loop() {
     }
     first = true;
 
-    if ((now - batt_debounce) > DEBOUNCE * 6) {
+    if ((now - batt_debounce) > BATTERY_DEBOUNCE) {
         // only need to update battery percentage once in a while
         batt_debounce = now;
         float voltage = battMonitor.readVoltage();
         float percentage = battMonitor.readPercentage();
-        Serial.printf("%2.4f, %2.2f\n", voltage, percentage);
+        //Serial.printf("%2.4f, %2.2f\n", voltage, percentage);
         checkBattery(percentage);
     }
 
     if (intFlag == 1) {
         intFlag = 0;
         battMonitor.clearInterrupt();
-        Serial.println("Low power alert interrupt!");
+        //Serial.println("Low power alert interrupt!");
         tone(BUZZER, NOTE_A5, NOTE_DURATION);
         delay(NOTE_DURATION);
         noTone(BUZZER);

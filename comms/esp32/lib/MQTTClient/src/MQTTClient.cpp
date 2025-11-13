@@ -35,7 +35,8 @@ bool MQTTClient::initialize() {
     mqttClient.setServer(MQTT_HOST, atoi(MQTT_PORT_NUMBER));
     mqttClient.setCallback(messageCallback);
     mqttClient.setBufferSize(BUFFER_SIZE);
-    
+    mqttClient.setSocketTimeout(NETWORK_TIMEOUT);
+
     randomSeed(esp_random());
     
     Serial.println("MQTT client initialized.");
