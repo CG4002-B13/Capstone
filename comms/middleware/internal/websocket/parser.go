@@ -203,7 +203,7 @@ func handleDebugResponse(event *types.WebsocketEvent) {
 	switch event.EventType {
 	case types.DEBUG_GESTURE_PONG:
 		debug.AddData(types.END_TO_END_GESTURE, timestamp-mqttInitialTime)
-	case types.DEBUG_VIDEO_PONG:
+	case types.DEBUG_VOICE_PONG:
 		debug.AddData(types.END_TO_END_VOICE, timestamp-mqttInitialTime)
 	default:
 		log.Printf("Invalid Debug Response Sent")
