@@ -31,7 +31,7 @@ func HandleCommand(c mqtt.Client, m mqtt.Message) {
 		var event types.WebsocketEvent
 		switch msg.Type {
 		case types.DEBUG:
-			log.Printf("Detected type debug")
+			// log.Printf("Detected type debug")
 			debug.StartDebugSession()
 			if debug.GetData(types.INITIAL_MQTT_TIME) < 0 {
 				debug.AddData(types.INITIAL_MQTT_TIME, msg.Timestamp)
