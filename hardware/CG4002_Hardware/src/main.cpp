@@ -4,6 +4,9 @@
 volatile bool recording = false;
 volatile bool ledOn = false;
 volatile bool first = true;
+volatile bool committed = false;
+volatile bool lock = false;
+volatile int counterX =0, counterY = 0, counterZ = 0;
 struct timeval tv;
 
 void interruptCallBack() { intFlag = 1; }
@@ -69,7 +72,7 @@ void loop() {
     mqttClient.loop();
     // mpuLoop(mpu);
     unsigned long now = millis();
-    static unsigned long button_debounce = 0;
+    static unsigned long button_debounce = 0, message_debounce = 0;
     static unsigned long streaming_debounce = 0;
     static unsigned long batt_debounce = 0;
     if (now - button_debounce > DEBOUNCE) {
@@ -93,12 +96,14 @@ void loop() {
 
     while (digitalRead(BUTTON_MOVE) == LOW || digitalRead(BUTTON_ROTATE) == LOW) {
         unsigned long now = millis();
+        String message = "{\n";
         if (now - streaming_debounce > STREAMING_DEBOUNCE) {
-            static int16_t x1,y1,z1, ax, ay, az;
+            streaming_debounce = now;
+            static int16_t x1, y1, z1, ax, ay, az;
             mpu.getAcceleration(&ax, &ay, &az);
-            float dx = (float) ax;
-            float dy = (float) ay;
-            float dz = (float) az;
+            float dx = (float)ax;
+            float dy = (float)ay;
+            float dz = (float)az;
             dx = (0.01 * dx) + (0.09 * dx) + (0.9 * dx);
             dy = (0.01 * dy) + (0.09 * dy) + (0.9 * dy);
             dz = (0.01 * dz) + (0.09 * dz) + (0.9 * dz);
@@ -109,45 +114,38 @@ void loop() {
                 first = false;
             }
 
-            //ignore small values
-            if (dx < 0.2) {
-                dx = 0;
-            }
-            if (dy < 0.2) {
-                dy = 0;
-            }
-            if (dz < 0.2) {
-                dz = 0;
-            }
-
             // Convert to physical units
             AccX = -2 * (dx - x1) / ACC_SCALE;
-            AccY = -2 * (dz - z1) / ACC_SCALE;
-            AccZ = -2 * (dy - y1) / ACC_SCALE;
+            AccY = -3 * (dz - z1) / ACC_SCALE;
+            AccZ = -4 * (dy - y1) / ACC_SCALE;
 
-            // Lock to maximum
-            if (AccX > 2) {
-                AccX = 2;
-            }
-            if (AccY > 2) {
-                AccY = 2;
-            }
-            if (AccZ > 2) {
-                AccZ = 2;
-            }
-            if (abs(AccY) > abs(AccX) && abs(AccY) > abs(AccZ)) {
-                AccX = 0;
-                AccZ = 0;
-            } else if (abs(AccX) > abs(AccY) && abs(AccX) > abs(AccZ)) {
-                AccY = 0;
-                AccZ = 0;
-            } else if (abs(AccZ) > abs(AccY) && abs(AccZ) > abs(AccX)) {
-                AccY = 0;
-                AccX = 0;
+            if (!lock) {
+                counterX = (customMax(AccX, AccY, AccZ) == 0) ? counterX + 1
+                                                              : counterX;
+                counterY = (customMax(AccX, AccY, AccZ) == 1) ? counterY + 1
+                                                              : counterY;
+                counterZ = (customMax(AccX, AccY, AccZ) == 2) ? counterZ + 1
+                                                              : counterZ;
             }
 
-            streaming_debounce = now;
-            String message = "{\n";
+            if (counterX >= 5) {
+                lock = true;
+                AccY = 0;
+                AccZ = 0;
+            } else if (counterY >= 5) {
+                lock = true;
+                AccX = 0;
+                AccZ = 0;
+            } else if (counterZ >= 5) {
+                lock = true;
+                AccX = 0;
+                AccY = 0;
+            }
+
+        } // end streaming debounce
+
+        if (now - message_debounce > MESSAGE_DEBOUNCE) {
+            message_debounce = now;
             if (digitalRead(BUTTON_MOVE) == LOW && digitalRead(BUTTON_ROTATE) == LOW) { //debug
                 String message = "{\n\"type\": \"DEBUG\",\n";
                 gettimeofday(&tv, NULL);
@@ -156,14 +154,14 @@ void loop() {
                 message += time_now;
                 message += "\n}";
                 mqttClient.publish(COMMAND, message);
-                streaming_debounce += 2000; //prevent spamming of debug
+                message_debounce += 2000; //prevent spamming of debug
                 sendVoice();
             } else if (digitalRead(BUTTON_MOVE) == LOW && digitalRead(BUTTON_ROTATE) == HIGH) {
                 message += "\"type\": \"MOVE\"";
-                //scaling for better movement
-                AccX *= 2;
-                AccY *= 2.2;
-                AccZ *= 2.5;
+                // scaling for better movement
+                AccX *= 2.5;
+                AccY *= 1.5;
+                AccZ *= 3;
                 message += ",\n";
                 String axes = "[";
                 axes += String(AccX);
@@ -175,11 +173,14 @@ void loop() {
                 message += "\"axes\": ";
                 message += axes;
                 message += "\n}";
-                mqttClient.publish(COMMAND, message);
+                if (lock) {
+                    mqttClient.publish(COMMAND, message);
+                }
             } else if (digitalRead(BUTTON_ROTATE) == LOW && digitalRead(BUTTON_MOVE) == HIGH) {
                 message += "\"type\": \"ROTATE\"";
                 message += ",\n";
-                if (AccZ > 0) AccZ *= 1.5;
+                if (AccZ > 0)
+                    AccZ *= 1.7;
                 String axes = "[";
                 axes += String(AccY);
                 axes += ", ";
@@ -190,12 +191,19 @@ void loop() {
                 message += "\"axes\": ";
                 message += axes;
                 message += "\n}";
-                mqttClient.publish(COMMAND, message);
+                if (lock) {
+                    mqttClient.publish(COMMAND, message);
+                }
             }
         }
     }
     first = true;
-
+    committed = false;
+    lock = false;
+    counterX = 0;
+    counterY = 0;
+    counterZ = 0;
+             
     if ((now - batt_debounce) > BATTERY_DEBOUNCE) {
         // only need to update battery percentage once in a while
         batt_debounce = now;

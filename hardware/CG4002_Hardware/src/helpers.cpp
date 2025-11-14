@@ -106,3 +106,10 @@ void sendVoice() {
         }
     }
 }
+
+int customMax(float AccX, float AccY, float AccZ) {
+    if (abs(AccX) > abs(AccY) && abs(AccX) > abs(AccZ)) return 0;
+    if (abs(AccY) > abs(AccX) && abs(AccY) > abs(AccZ)) return 1;
+    if (abs(AccZ) > abs(AccX) && abs(AccZ) > abs(AccY)) return 2;
+    return -1;
+}

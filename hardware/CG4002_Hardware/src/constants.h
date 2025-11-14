@@ -7,6 +7,7 @@
 #define VOICE_DATA "esp32/voice_data"
 #define VOICE_RESULT "ultra96/voice_result"
 #define COMMAND "esp32/command"
+#define DEBUG "debug/status"
 
 //MAX17043 constants
 // #ifdef __AVR__
@@ -39,7 +40,8 @@
 
 #define DEBOUNCE 4000 //prevent multiple voice recordings to be sent at once
 #define BATTERY_DEBOUNCE 30000 // only need to check battery every 30s
-#define STREAMING_DEBOUNCE 100
+#define STREAMING_DEBOUNCE 30
+#define MESSAGE_DEBOUNCE 100
 
 //buzzer constants
 #define NOTE_DURATION 100
