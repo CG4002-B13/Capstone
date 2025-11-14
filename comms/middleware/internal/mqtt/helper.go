@@ -33,8 +33,12 @@ func HandleCommand(c mqtt.Client, m mqtt.Message) {
 		case types.DEBUG:
 			log.Printf("Detected type debug")
 			debug.StartDebugSession()
-			debug.AddData(types.INITIAL_SERVER_TIME, time.Now().UnixMilli())
-			debug.AddData(types.INITIAL_MQTT_TIME, msg.Timestamp)
+			if debug.GetData(types.INITIAL_MQTT_TIME) < 0 {
+				debug.AddData(types.INITIAL_MQTT_TIME, msg.Timestamp)
+			}
+			if debug.GetData(types.INITIAL_SERVER_TIME) < 0 {
+				debug.AddData(types.INITIAL_SERVER_TIME, time.Now().UnixMilli())
+			}
 			debug.AddData(types.ESP32_TO_SERVER, time.Now().UnixMilli()-msg.Timestamp)
 
 			event = types.WebsocketEvent{
