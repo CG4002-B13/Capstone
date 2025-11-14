@@ -188,7 +188,6 @@ func sendS3Response(client *WSClient, response *types.WebsocketEvent) {
 
 func handleDebugResponse(event *types.WebsocketEvent) {
 	timestamp := event.Timestamp
-	serverInitialTime := debug.GetData(types.INITIAL_SERVER_TIME)
 	mqttInitialTime := debug.GetData(types.INITIAL_MQTT_TIME)
 
 	// if serverInitialTime == 0 || mqttInitialTime == 0 {
@@ -196,7 +195,8 @@ func handleDebugResponse(event *types.WebsocketEvent) {
 	// 	return
 	// }
 
-	if debug.GetData(types.SERVER_TO_VIS) == 0 {
+	if debug.GetData(types.SERVER_TO_VIS) < 0 {
+		serverInitialTime := debug.GetData(types.INITIAL_SERVER_TIME)
 		debug.AddData(types.SERVER_TO_VIS, timestamp-serverInitialTime)
 	}
 

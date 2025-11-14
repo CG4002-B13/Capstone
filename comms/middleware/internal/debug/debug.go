@@ -18,13 +18,24 @@ var (
 
 var DURATION = 5 * time.Second
 
+var AllDebugFields = []types.TimeField{
+	types.INITIAL_MQTT_TIME,
+	types.ESP32_TO_SERVER,
+	types.ESP32_TO_ULTRA96,
+	types.ULTRA96_TO_SERVER,
+	types.INFERENCE_TIME,
+	types.INITIAL_SERVER_TIME,
+	types.SERVER_TO_VIS,
+	types.END_TO_END_GESTURE,
+	types.END_TO_END_VOICE,
+}
+
 func RegisterSendDebugCallback(cb func(data interface{})) {
 	SendDebugCallback = cb
 }
 
 type DataCollector struct {
 	data     map[types.TimeField]int64
-	required []types.TimeField
 	dataLock sync.RWMutex
 	ctx      context.Context
 	cancel   context.CancelFunc
@@ -57,32 +68,26 @@ func StartDebugSession() bool {
 
 	ctx, cancel := context.WithTimeout(context.Background(), DURATION)
 	DebugCollector = &DataCollector{
-		data: make(map[types.TimeField]int64),
-		required: []types.TimeField{
-			types.INITIAL_MQTT_TIME,
-			types.ESP32_TO_SERVER,
-			types.ESP32_TO_ULTRA96,
-			types.ULTRA96_TO_SERVER,
-			types.INFERENCE_TIME,
-			types.INITIAL_SERVER_TIME,
-			types.SERVER_TO_VIS,
-			types.END_TO_END_GESTURE,
-			types.END_TO_END_VOICE,
-		},
+		data:   make(map[types.TimeField]int64),
 		ctx:    ctx,
 		cancel: cancel,
 		done:   make(chan struct{}),
 	}
 
+	// Initialize all keys in 'data' map to -1
+	for _, key := range AllDebugFields {
+		DebugCollector.data[key] = -1
+	}
+
 	log.Printf("DebugCollector created and started")
-	go DebugCollector.run() // FIX 3: Call as method with receiver
+	go DebugCollector.run()
 	return true
 }
 
 // FIX 2: Create internal version without lock
 func (dc *DataCollector) isCompleteLocked() bool {
-	for _, key := range dc.required {
-		if _, exists := dc.data[key]; !exists {
+	for _, value := range dc.data {
+		if value < 0 {
 			return false
 		}
 	}
@@ -141,20 +146,12 @@ func (dc *DataCollector) getFullDataCopy() map[types.TimeField]int64 {
 	return copy
 }
 
-// Public version with lock (if needed elsewhere)
-func (dc *DataCollector) isComplete() bool {
-	dc.dataLock.RLock()
-	defer dc.dataLock.RUnlock()
-	return dc.isCompleteLocked()
-}
-
 func toLatencyInfo(data map[types.TimeField]int64) *types.LatencyInfo {
 	fmtLatency := func(t types.TimeField) string {
-		v, ok := data[t]
-		if !ok {
+		if data[t] < 0 {
 			return "no data available"
 		}
-		return fmt.Sprintf("%dms", v)
+		return fmt.Sprintf("%dms", data[t])
 	}
 	return &types.LatencyInfo{
 		ESP32ToServer:      fmtLatency(types.ESP32_TO_SERVER),
