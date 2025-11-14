@@ -80,7 +80,7 @@ func (h *Hub) unregisterClient(client *WSClient) {
 		}
 
 		if client.IsMaster {
-			log.Printf("MASTER has left session %s. Closing all clientt conenctions.", client.SessionID)
+			log.Printf("MASTER has left session %s. Closing all client conenctions.", client.SessionID)
 			for remainingClient := range clients {
 				close(remainingClient.Send) // Close client send channel
 				remainingClient.Conn.Close()

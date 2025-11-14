@@ -59,7 +59,7 @@ func StartDebugSession() bool {
 	mu.Lock()
 	defer mu.Unlock()
 
-	log.Println("Acquired lock in StartDebugSession")
+	// log.Println("Acquired lock in StartDebugSession")
 
 	if DebugCollector != nil {
 		log.Println("Debug is already active, returning")
@@ -103,7 +103,7 @@ func (dc *DataCollector) AddData(key types.TimeField, value int64) bool {
 	}
 
 	dc.data[key] = value
-	log.Printf("Added %d to %s", value, key)
+	// log.Printf("Added %d to %s", value, key)
 
 	// FIX 2: Use internal version that doesn't acquire lock
 	if dc.isCompleteLocked() {
