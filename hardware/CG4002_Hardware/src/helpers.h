@@ -42,3 +42,4 @@ void checkBattery(float perc);
 void i2sInit();
 void recordVoice(int16_t flag);
 void sendVoice();
+int customMax(float AccX, float AccY, float AccZ);
