@@ -70,7 +70,6 @@ WIFI_PASS=
 MQTT_USER=
 MQTT_PASS=
 
-
 DEV_MQTT_SERVER=
 DEV_MQTT_PORT=
 
@@ -98,12 +97,29 @@ pio run -e deploy -t upload
 ```
 
 ## Golang Service
-TBC
+The Golang service is responsible for subscribing to the MQTT broker, restructuring data and forwarding to websocket clients. It is also the endpoint for any S3 requests. </br>
+Required variables in `.env`:
+```
+- CA_CERT=
+- SERVER_CERT=
+- SERVER_KEY=
+- CLIENT_CERT=
+- CLIENT_KEY=
+- WS_PORT=
+- MQTT_HOST=
+- MQTT_PORT=
+- MQTT_USER= # Required even with docker compose
+- MQTT_PASS= # Required even with docker compose
+- AWS_REGION= # Required even with docker compose
+- AWS_ACCESS_KEY= # Required even with docker compose
+- AWS_SECRET_ACCESS_KEY= # Required even with docker compose
+```
 
 ## Docker Compose
-To facilitate development and deployment, the mosquitto MQTT broker is started together with the golang service within docker compose to minimise setup issues across machines. Simply run:
+To facilitate development and deployment, the mosquitto MQTT broker is started together with the golang service within docker compose to minimise setup issues across machines. Simply run from /comms:
 ```
-docker compose up -d 
+docker compose -f docker-compose.dev.yml build
+docker compose -f docker-compose.dev.yml up -d 
 # omit -d for logs
 ```
 
