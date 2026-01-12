@@ -1,6 +1,6 @@
 # CG4002
 
-Capstone AY25/26 S1
+Capstone AY25/26 S1 Group B13
 
 This project consists of several components:
 
